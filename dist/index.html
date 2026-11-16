@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f6f0">
+  <meta name="description" content="Карта метро и городских поездов Бангкока с поиском станций и построением маршрутов.">
+  <title>Bangkok Rail — метро Бангкока</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="data.js"></script>
+  <script defer src="map-data.js"></script>
+  <script defer src="routing.js"></script>
+  <script defer src="map.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-train" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="14" rx="4"/><path d="M5 10.5h14M8 18l-2 2.5m10-2.5 2 2.5M9 14h.01m5.99 0h.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+    <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2"/><path d="M12 2.5v3m0 13v3m6.5-9.5h3m-19 0h3"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M8 19V5m-4 4 4-4 4 4m4-4v14m-4-4 4 4 4-4"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 12h14m-5.5-5.5 5.5 5.5-5.5 5.5"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5m6 0h5v5M4 15v5h5m11-5v5h-5"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-clear" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="m3 11 7 2 3 7 1.7-1.3-.6-6.4L20 6.5a1.76 1.76 0 0 0-2.5-2.5l-5.8 5.9-6.4-.6L3 11Z"/></symbol>
+    <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M3 7h16m-4-4 4 4-4 4m6 6H5m4-4-4 4 4 4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <a class="brand" href="./index.html" aria-label="Bangkok Rail — начало">
+      <span class="brand-icon"><svg class="icon"><use href="#i-train"/></svg></span>
+      <span>Bangkok<span class="brand-accent"> Rail</span></span>
+    </a>
+    <span class="city"><svg class="icon"><use href="#i-pin"/></svg> Бангкок, Таиланд</span>
+    <div class="header-actions">
+      <button id="locate" class="location-button" type="button">
+        <svg class="icon"><use href="#i-locate"/></svg><span>Моё местоположение</span>
+      </button>
+      <button id="about-open" class="button-icon about-button" type="button" title="О карте" aria-label="О карте">
+        <svg class="icon"><use href="#i-info"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section id="planner" class="planner" aria-labelledby="planner-title">
+      <div class="planner-inner">
+        <h1 id="planner-title">Куда поедем?</h1>
+        <p class="intro">Найдите станцию по названию или выберите её на карте.</p>
+
+        <form id="route-form" novalidate>
+          <div class="route-fields">
+            <div class="field" data-end="from">
+              <span class="endpoint-icon origin" aria-hidden="true"><span></span></span>
+              <div class="field-content">
+                <label for="from">Откуда</label>
+                <div class="input-row">
+                  <input id="from" type="text" placeholder="Станция отправления" role="combobox" aria-expanded="false" aria-controls="from-options" aria-autocomplete="list" autocomplete="off" autocapitalize="none" spellcheck="false">
+                  <button class="field-clear button-icon" type="button" aria-label="Очистить станцию отправления" hidden><svg class="icon"><use href="#i-clear"/></svg></button>
+                </div>
+              </div>
+              <ul id="from-options" class="options" role="listbox" hidden></ul>
+            </div>
+            <div class="field" data-end="to">
+              <span class="endpoint-icon destination" aria-hidden="true"><svg class="icon"><use href="#i-pin"/></svg></span>
+              <div class="field-content">
+                <label for="to">Куда</label>
+                <div class="input-row">
+                  <input id="to" type="text" placeholder="Станция назначения" role="combobox" aria-expanded="false" aria-controls="to-options" aria-autocomplete="list" autocomplete="off" autocapitalize="none" spellcheck="false">
+                  <button class="field-clear button-icon" type="button" aria-label="Очистить станцию назначения" hidden><svg class="icon"><use href="#i-clear"/></svg></button>
+                </div>
+              </div>
+              <ul id="to-options" class="options" role="listbox" hidden></ul>
+            </div>
+            <button class="swap button-icon" id="swap" type="button" aria-label="Поменять станции местами" title="Поменять станции местами"><svg class="icon"><use href="#i-swap"/></svg></button>
+          </div>
+
+          <div class="location-hint" id="location-hint" hidden></div>
+          <p class="form-error" id="form-error" role="status" hidden></p>
+          <button class="build-button" type="submit"><span>Построить маршрут</span><svg class="icon"><use href="#i-arrow"/></svg></button>
+        </form>
+
+        <section id="examples" class="examples" aria-labelledby="examples-title">
+          <h2 id="examples-title">Примеры маршрутов</h2>
+          <button class="example" type="button" data-from="A1" data-to="CEN">
+            <span class="example-icon airport"><svg class="icon"><use href="#i-plane"/></svg></span>
+            <span class="example-copy"><strong>Из аэропорта в центр</strong><small>Suvarnabhumi → Siam</small></span>
+            <svg class="icon example-next"><use href="#i-chevron"/></svg>
+          </button>
+          <button class="example" type="button" data-from="E4" data-to="BL31">
+            <span class="example-icon old-city"><svg class="icon"><use href="#i-train"/></svg></span>
+            <span class="example-copy"><strong>В исторический центр</strong><small>Asok → Sanam Chai</small></span>
+            <svg class="icon example-next"><use href="#i-chevron"/></svg>
+          </button>
+        </section>
+
+        <section id="itinerary" class="itinerary" aria-label="Подробности маршрута" hidden></section>
+      </div>
+      <div id="network-info" class="network-info">
+        <div class="network-lines" aria-hidden="true"></div>
+        <span>Метро и городские поезда</span>
+        <small id="network-count"></small>
+      </div>
+    </section>
+
+    <section id="map" class="map" aria-label="Карта метро и улиц Бангкока">
+      <canvas id="map-canvas" tabindex="0" aria-label="Карта. Стрелки перемещают карту, плюс и минус меняют масштаб. Для поиска станции используйте поля маршрута."></canvas>
+
+      <div class="map-toolbar">
+        <div class="layers-wrap">
+          <button id="layers-toggle" class="map-chip" aria-expanded="false" aria-controls="layers-panel" type="button">
+            <svg class="icon"><use href="#i-layers"/></svg><span>Все линии</span><svg class="icon dropdown-chevron"><use href="#i-chevron"/></svg>
+          </button>
+          <section id="layers-panel" class="layers-panel" aria-label="Видимость линий" hidden></section>
+        </div>
+        <button id="fit-route" class="map-chip" type="button" hidden><svg class="icon"><use href="#i-fit"/></svg><span>К маршруту</span></button>
+      </div>
+      <div class="north" title="Карта ориентирована на север" aria-hidden="true"><span>С</span><i></i></div>
+
+      <div id="station-card" class="station-card" hidden></div>
+
+      <div class="map-buttons">
+        <div class="zoom-buttons">
+          <button id="zoom-in" class="button-icon" type="button" title="Приблизить" aria-label="Приблизить"><svg class="icon"><use href="#i-plus"/></svg></button>
+          <button id="zoom-out" class="button-icon" type="button" title="Отдалить" aria-label="Отдалить"><svg class="icon"><use href="#i-minus"/></svg></button>
+        </div>
+        <button id="fit-network" class="button-icon map-fit" type="button" title="Показать всю сеть" aria-label="Показать всю сеть"><svg class="icon"><use href="#i-fit"/></svg></button>
+      </div>
+
+      <div class="map-footer">
+        <div id="scale" class="scale" aria-hidden="true"></div>
+        <div class="attribution">
+          <a href="https://namtang-api.otp.go.th/opendata" target="_blank" rel="noopener">OTP Namtang</a><span> · </span><a href="https://openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a><span> · </span><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="notification" class="notification" role="status" hidden></div>
+  <dialog id="about" class="about">
+    <button id="about-close" class="button-icon dialog-close" type="button" aria-label="Закрыть"><svg class="icon"><use href="#i-clear"/></svg></button>
+    <h2>О карте</h2>
+    <p>Станции и геометрия линий адаптированы из открытых данных OTP Namtang от 15 ноября 2026 года. Подложка улиц основана на OpenStreetMap.</p>
+    <p>Время поездки и переходов рассчитано приблизительно. Для определения позиции разрешите геолокацию в Safari. Координаты обрабатываются на устройстве.</p>
+    <ul class="source-links">
+      <li><a href="https://namtang-api.otp.go.th/opendata" target="_blank" rel="noopener">OTP Namtang · CC BY</a></li>
+      <li><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap · ODbL</a></li>
+      <li><a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap / OpenMapTiles</a></li>
+    </ul>
+  </dialog>
+</body>
+</html>
