@@ -81,6 +81,7 @@
       this.tileCache = new WeakMap();
       this.pendingTiles = new Set();
       this.detailTiles = new Map();
+      this.embeddedTiles = document.getElementById("offline-map-tiles");
       this.pointers = new Map();
       this.visibleLines = new Set(runs.map(run => run.line.id));
       this.railVisible = true;
@@ -195,25 +196,39 @@
       });
     }
 
+    rememberDetailTile(key) {
+      this.detailTiles.set(key, true);
+      const cacheLimit = Math.max(66, Math.ceil(this.width / 205 + 2) * Math.ceil(this.height / 205 + 2) + 34);
+      if (this.detailTiles.size > cacheLimit) {
+        const oldest = this.detailTiles.keys().next().value;
+        delete baseTiles[oldest];
+        this.detailTiles.delete(oldest);
+      }
+      this.requestDraw();
+    }
+
     fetchTile(zoom, x, y) {
       const file = `${x}-${y}`;
       const key = `${zoom}/${file}`;
       const index = tileIndex.get(zoom);
       if (!index?.has(file) || this.pendingTiles.has(key)) return;
+      if (this.embeddedTiles) {
+        const tile = document.getElementById(`offline-tile-${key}`);
+        if (tile) {
+          baseTiles[key] = JSON.parse(tile.textContent);
+          this.rememberDetailTile(key);
+        } else {
+          index.delete(file);
+        }
+        return;
+      }
       this.pendingTiles.add(key);
       const script = document.createElement("script");
       script.src = `map/${key}.js`;
       script.onload = () => {
         this.pendingTiles.delete(key);
-        this.detailTiles.set(key, true);
-        const cacheLimit = Math.max(66, Math.ceil(this.width / 205 + 2) * Math.ceil(this.height / 205 + 2) + 34);
-        if (this.detailTiles.size > cacheLimit) {
-          const oldest = this.detailTiles.keys().next().value;
-          delete baseTiles[oldest];
-          this.detailTiles.delete(oldest);
-        }
         script.remove();
-        this.requestDraw();
+        this.rememberDetailTile(key);
       };
       script.onerror = () => {
         this.pendingTiles.delete(key);
