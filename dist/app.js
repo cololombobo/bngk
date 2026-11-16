@@ -20,6 +20,8 @@
   const stationCard = byId("station-card");
   const layers = byId("layers-panel");
   const layersToggle = byId("layers-toggle");
+  const railToggle = byId("rail-toggle");
+  const fitNetwork = byId("fit-network");
   const locationButton = byId("locate");
   const locationHint = byId("location-hint");
   const error = byId("form-error");
@@ -35,6 +37,7 @@
   const visibleLines = new Set(lines.map(line => line.id));
   const selectedTags = new Set();
   const pinned = new Set();
+  let railVisible = true;
   const fields = ["from", "to"].map(key => {
     const input = byId(key);
     return {
@@ -106,7 +109,7 @@
   function updateMap() {
     const visiblePlaces = catalogOpen ? catalogMatches.filter(onMap) : [...pinned];
     map.setState({
-      visibleLines, endpoints, route,
+      visibleLines, railVisible, endpoints, route,
       endpointPoints: [pointById(endpoints.from), pointById(endpoints.to)],
       activeStation: selectedPoint?.code ?? null,
       activePlace: selectedPoint?.id && selectedPoint.id !== "here" ? selectedPoint : null,
@@ -797,6 +800,15 @@
     updateLayers();
   });
   layersToggle.addEventListener("click", () => toggleLayers(layers.hidden));
+  railToggle.addEventListener("click", () => {
+    railVisible = !railVisible;
+    toggleLayers(false);
+    if (!railVisible && selectedPoint?.code) closePoint();
+    layersToggle.parentElement.hidden = !railVisible;
+    fitNetwork.hidden = !railVisible;
+    railToggle.querySelector("span").textContent = railVisible ? "Скрыть метро" : "Показать метро";
+    updateMap();
+  });
   document.addEventListener("pointerdown", event => {
     if (!layersToggle.parentElement.contains(event.target)) toggleLayers(false);
     for (const field of fields) if (!field.field.contains(event.target)) hideOptions(field);
@@ -811,7 +823,7 @@
 
   byId("zoom-in").addEventListener("click", () => map.zoomBy(0.85));
   byId("zoom-out").addEventListener("click", () => map.zoomBy(-0.85));
-  byId("fit-network").addEventListener("click", () => {
+  fitNetwork.addEventListener("click", () => {
     closePoint();
     const showing = stations.filter(station => station.lines.some(line => visibleLines.has(line.id)));
     map.fit(showing.length ? showing : stations, 13);

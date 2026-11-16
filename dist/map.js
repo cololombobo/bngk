@@ -83,6 +83,7 @@
       this.detailTiles = new Map();
       this.pointers = new Map();
       this.visibleLines = new Set(runs.map(run => run.line.id));
+      this.railVisible = true;
       this.frame = null;
       this.pickedMarkers = [];
       this.stationLabels = [];
@@ -246,7 +247,7 @@
       const density = clamp(2 ** ((this.zoom - 12) / 4), 0.65, 2.45);
       for (const [layer, color, width] of paint) {
         const path = geometry[layer];
-        if (!path) continue;
+        if (!path || (!this.railVisible && layer === "rail")) continue;
         if (width) {
           if (layer === "lane" && this.zoom < 14.5) continue;
           ctx.strokeStyle = color;
@@ -411,7 +412,7 @@
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       const width = this.zoom >= 14.5 ? 4.6 : this.zoom >= 11.35 ? 3.75 : 2.85;
-      const visibleRuns = runs.filter(run => this.visibleLines.has(run.line.id));
+      const visibleRuns = this.railVisible ? runs.filter(run => this.visibleLines.has(run.line.id)) : [];
       const backgroundWidth = this.route ? width * 0.65 : width;
       ctx.globalAlpha = this.route ? 0.54 : 0.97;
       for (const run of visibleRuns) this.track(run.segments, "#fffffc", backgroundWidth + 2.4);
@@ -423,17 +424,17 @@
       }
       ctx.globalAlpha = 1;
       for (const leg of this.route?.legs ?? []) {
-        if (leg.type === "ride") {
+        if (this.railVisible && leg.type === "ride") {
           this.track(leg.segments, "#fffefa", width + 5);
           this.track(leg.segments, leg.line.color, width + 2.6);
-        } else if (leg.type === "walk" || leg.type === "transfer") {
+        } else if (leg.type === "walk" || (this.railVisible && leg.type === "transfer")) {
           this.connector(leg.from, leg.to, true);
         }
       }
     }
 
     stationVisible(station) {
-      return station.lines.some(line => this.visibleLines.has(line.id));
+      return this.railVisible && station.lines.some(line => this.visibleLines.has(line.id));
     }
 
     circle(x, y, radius, fill, stroke, strokeWidth = 1) {
@@ -450,10 +451,11 @@
     }
 
     drawStations() {
-      const ctx = this.context;
-      const candidates = [];
       this.pickedMarkers = [];
       this.stationLabels = [];
+      if (!this.railVisible) return;
+      const ctx = this.context;
+      const candidates = [];
       for (const station of stations) {
         const from = this.endpoints.from === station.code;
         const to = this.endpoints.to === station.code;
@@ -636,6 +638,7 @@
         { x: 0, y: 0, w: routeToolbar, h: 65 },
         { x: this.width - 55, y: 0, w: 55, h: 56 },
         { x: this.width - 62, y: this.height - 180, w: 62, h: 180 },
+        { x: 0, y: this.height - 82, w: 155, h: 56 },
         { x: 0, y: this.height - 26, w: this.width, h: 26 }
       ];
       this.routeLines();
