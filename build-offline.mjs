@@ -41,7 +41,8 @@ const html = template
   .replace(stylesheet, () => "<style>\n" + read("styles.css") + "\n</style>")
   .replace(/<title>[^<]*<\/title>/, "<title>Bangkok Rail — офлайн-карта Бангкока</title>")
   .replace('href="./index.html"', 'href=""')
-  .replace(/^    <a id="offline-download".*<\/a>\n/m, "")
+  .replace(/^    <div id="offline-options"[^>]*>[\s\S]*?^    <\/div>\n/m, "")
+  .replace(/^    <p id="offline-status".*<\/p>\n/m, "")
   .replace("</body>", () =>
     '<div id="offline-map-tiles" hidden>\n' + tileTags.join("\n") + "\n</div>\n" +
     runtime + "\n</body>"

@@ -136,6 +136,9 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
 .map-chip .icon { height: 16px; width: 16px; }
 .map-chip .dropdown-chevron { height: 11px; width: 11px; transform: rotate(90deg); margin-left: 2px; color: #647466; }
 .map-chip:hover { background: #f3f8f1; }
+.offline-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.offline-options .map-chip { min-height: 44px; box-shadow: none; }
+.offline-options button:disabled { opacity: .65; cursor: wait; }
 .offline-download { text-decoration: none; }
 .rail-toggle { position: absolute; left: 15px; bottom: 33px; }
 .layers-wrap { position: relative; }

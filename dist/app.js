@@ -900,6 +900,48 @@
     else about.removeAttribute("open");
   });
 
+  const offlineSave = byId("offline-save");
+  if (offlineSave && window.isSecureContext && "serviceWorker" in navigator && "caches" in window) {
+    const status = byId("offline-status");
+    const bundledMap = byId("offline-download").href;
+    const cacheName = "bangkok-rail-offline";
+    function showOfflineSaved() {
+      offlineSave.textContent = "Обновить офлайн-копию";
+      status.textContent = "Карта сохранена. Эту же страницу можно открыть без интернета.";
+      status.hidden = false;
+    }
+
+    offlineSave.hidden = false;
+    offlineSave.disabled = true;
+    Promise.all([navigator.serviceWorker.getRegistration(), caches.match(bundledMap, { cacheName })])
+      .then(([registration, copy]) => {
+        if (registration?.active && copy) showOfflineSaved();
+      })
+      .catch(() => { /* The save attempt reports storage errors. */ })
+      .finally(() => { offlineSave.disabled = false; });
+
+    offlineSave.addEventListener("click", async () => {
+      offlineSave.disabled = true;
+      status.hidden = false;
+      status.textContent = "Сохраняем карту и улицы…";
+      try {
+        await navigator.serviceWorker.register("./offline-sw.js");
+        const response = await fetch(bundledMap, { cache: "reload", redirect: "error" });
+        if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) {
+          throw new Error("Offline HTML is unavailable.");
+        }
+        const cache = await caches.open(cacheName);
+        await cache.put(bundledMap, response);
+        await navigator.serviceWorker.ready;
+        showOfflineSaved();
+      } catch {
+        status.textContent = "Не удалось сохранить карту. Попробуйте ещё раз при подключении к интернету.";
+      } finally {
+        offlineSave.disabled = false;
+      }
+    });
+  }
+
   byId("network-count").textContent = `${lines.length} линий · ${stations.length} ${plural(stations.length, "станция", "станции", "станций")}`;
   document.querySelector(".network-lines").innerHTML = ["#6c9e31", "#2259b3", "#cf527f"]
     .map((color, index) => `<i style="--route-color:${color};--sample-width:${21 - index * 3}px"></i>`).join("");

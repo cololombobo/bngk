@@ -145,6 +145,9 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
 .map-chip .icon { height: 16px; width: 16px; }
 .map-chip .dropdown-chevron { height: 11px; width: 11px; transform: rotate(90deg); margin-left: 2px; color: #647466; }
 .map-chip:hover { background: #f3f8f1; }
+.offline-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.offline-options .map-chip { min-height: 44px; box-shadow: none; }
+.offline-options button:disabled { opacity: .65; cursor: wait; }
 .offline-download { text-decoration: none; }
 .rail-toggle { position: absolute; left: 15px; bottom: 33px; }
 .layers-wrap { position: relative; }
@@ -4083,6 +4086,48 @@ window.BangkokPlacesData = [
     if (typeof about.close === "function") about.close();
     else about.removeAttribute("open");
   });
+
+  const offlineSave = byId("offline-save");
+  if (offlineSave && window.isSecureContext && "serviceWorker" in navigator && "caches" in window) {
+    const status = byId("offline-status");
+    const bundledMap = byId("offline-download").href;
+    const cacheName = "bangkok-rail-offline";
+    function showOfflineSaved() {
+      offlineSave.textContent = "Обновить офлайн-копию";
+      status.textContent = "Карта сохранена. Эту же страницу можно открыть без интернета.";
+      status.hidden = false;
+    }
+
+    offlineSave.hidden = false;
+    offlineSave.disabled = true;
+    Promise.all([navigator.serviceWorker.getRegistration(), caches.match(bundledMap, { cacheName })])
+      .then(([registration, copy]) => {
+        if (registration?.active && copy) showOfflineSaved();
+      })
+      .catch(() => { /* The save attempt reports storage errors. */ })
+      .finally(() => { offlineSave.disabled = false; });
+
+    offlineSave.addEventListener("click", async () => {
+      offlineSave.disabled = true;
+      status.hidden = false;
+      status.textContent = "Сохраняем карту и улицы…";
+      try {
+        await navigator.serviceWorker.register("./offline-sw.js");
+        const response = await fetch(bundledMap, { cache: "reload", redirect: "error" });
+        if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) {
+          throw new Error("Offline HTML is unavailable.");
+        }
+        const cache = await caches.open(cacheName);
+        await cache.put(bundledMap, response);
+        await navigator.serviceWorker.ready;
+        showOfflineSaved();
+      } catch {
+        status.textContent = "Не удалось сохранить карту. Попробуйте ещё раз при подключении к интернету.";
+      } finally {
+        offlineSave.disabled = false;
+      }
+    });
+  }
 
   byId("network-count").textContent = `${lines.length} линий · ${stations.length} ${plural(stations.length, "станция", "станции", "станций")}`;
   document.querySelector(".network-lines").innerHTML = ["#6c9e31", "#2259b3", "#cf527f"]
