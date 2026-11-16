@@ -93,6 +93,7 @@
       this.endpointPoints = [];
       this.route = null;
       this.endpoints = {};
+      this.pendingFit = null;
       this.resize();
       this.bindGestures();
       new ResizeObserver(() => this.resize()).observe(this.container);
@@ -102,7 +103,11 @@
       const width = this.canvas.clientWidth;
       const height = this.canvas.clientHeight;
       const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
-      if (!width || !height || (width === this.width && height === this.height && pixelRatio === this.pixelRatio)) return;
+      if (!width || !height) {
+        this.width = this.height = 0;
+        return;
+      }
+      if (width === this.width && height === this.height && pixelRatio === this.pixelRatio) return;
       if (!this.center) {
         const compact = width < 540;
         this.center = compact ? project(13.775, 100.533) : project(13.785, 100.548);
@@ -112,7 +117,8 @@
       this.canvas.width = Math.round(width * pixelRatio);
       this.canvas.height = Math.round(height * pixelRatio);
       this.container.style.setProperty("--map-height", `${height}px`);
-      this.requestDraw();
+      if (this.pendingFit) this.fit(...this.pendingFit);
+      else this.requestDraw();
     }
 
     get size() {
@@ -142,6 +148,7 @@
     }
 
     moveTo(center, zoom = this.zoom) {
+      this.pendingFit = null;
       this.center = {
         x: clamp(center.x, bounds.nw.x, bounds.se.x),
         y: clamp(center.y, bounds.nw.y, bounds.se.y)
@@ -169,6 +176,10 @@
 
     fit(stationList, max = 14.25) {
       if (stationList.length === 0) return;
+      if (!this.width || !this.height) {
+        this.pendingFit = [stationList, max];
+        return;
+      }
       const points = stationList.map(station => project(station.lat, station.lng));
       const xs = points.map(point => point.x);
       const ys = points.map(point => point.y);

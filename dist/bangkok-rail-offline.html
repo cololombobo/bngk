@@ -57,6 +57,7 @@ button, a, input, canvas { outline-offset: 4px; }
 .location-button[aria-busy="true"] { opacity: .62; }
 .location-button .icon { width: 18px; height: 18px; }
 .about-button { width: 42px; color: #596d5d; }
+.view-toggle { display: none; }
 
 .workspace {
   margin: 0 max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
@@ -321,49 +322,82 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
 .place-editor textarea { display: block; resize: vertical; width: 100%; min-height: 78px; max-height: 32vh; margin-top: 6px; padding: 8px; border: 1px solid #dce5d9; border-radius: 8px; background: #fafbf8; color: var(--ink); font: inherit; font-size: 16px; line-height: 1.4; }
 .personal-note { white-space: pre-wrap; overflow-wrap: anywhere; background: #f1f5ee; border-radius: 7px; padding: 7px; }
 
-@media (max-width: 780px) {
-  .planner-nav { margin: 11px 16px 0; }
-  .planner-nav button { min-height: 40px; }
-  .planner-nav + .planner-inner { padding-top: 15px; }
-  .map { height: clamp(316px, 42svh, 460px); }
-  .tag-button { min-height: 36px; padding-inline: 8px; }
-  .catalog-pin { width: 40px; height: 42px; }
-}
-
-@media (max-width: 780px) {
-  body { padding-top: env(safe-area-inset-top); }
-  .topbar { height: 61px; padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); gap: 10px; }
-  .brand { font-size: 21px; gap: 8px; }
+@media (max-width: 780px), (max-height: 480px) and (pointer: coarse) {
+  body { --mobile-topbar-height: calc(61px + env(safe-area-inset-top, 0px)); }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    height: var(--mobile-topbar-height);
+    padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+    gap: 8px;
+    background: var(--paper);
+  }
+  .brand { font-size: clamp(17px, 5.2vw, 21px); gap: 7px; }
   .brand-icon { width: 35px; height: 35px; border-radius: 10px; }
   .brand-icon .icon { width: 20px; height: 20px; }
   .city { display: none; }
   .header-actions { gap: 3px; }
   .location-button, .about-button { min-width: 44px; min-height: 44px; }
   .location-button { padding: 0 9px; font-size: 12px; }
-  .workspace { margin: 0 max(10px, env(safe-area-inset-right)) max(15px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .map { grid-row: 1; height: clamp(316px, 45vh, 460px); height: clamp(316px, 45svh, 460px); }
-  .map, .planner { border-radius: 16px; }
-  .map-toolbar { top: 9px; left: 9px; }
-  .north { top: 11px; right: 12px; }
+  .view-toggle {
+    display: inline-grid;
+    place-items: center;
+    min-width: 76px;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid #d7dfd3;
+    border-radius: 11px;
+    color: var(--pine);
+    background: #e8efe4;
+    font-size: 12px;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  .view-toggle:hover { background: #dfe9dc; }
+  .map-view .view-toggle { background: var(--pine); border-color: var(--pine); color: #fff; }
+
+  .workspace { margin: 0 max(10px, env(safe-area-inset-right)) max(15px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); }
+  .map { display: none; }
+  .map-view .planner { display: none; }
+  .map-view .workspace {
+    margin: 0;
+    height: calc(100vh - var(--mobile-topbar-height));
+    height: calc(100dvh - var(--mobile-topbar-height));
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .map-view .map { display: block; border: 0; border-radius: 0; }
+  .map-toolbar { top: 9px; left: max(9px, env(safe-area-inset-left)); }
+  .north { top: 11px; right: max(12px, env(safe-area-inset-right)); }
   .map-chip { min-height: 44px; padding: 0 9px; gap: 5px; }
-  .rail-toggle { left: 9px; bottom: 28px; }
-  .map-buttons { right: 9px; bottom: 28px; gap: 6px; }
+  .rail-toggle { left: max(9px, env(safe-area-inset-left)); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
+  .map-buttons { right: max(9px, env(safe-area-inset-right)); bottom: calc(28px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
   .map-buttons .button-icon { width: 44px; height: 44px; }
   .map-buttons .map-fit { width: 46px; height: 46px; }
-  .map-footer { bottom: 5px; right: 6px; left: 8px; }
+  .map-footer { bottom: calc(5px + env(safe-area-inset-bottom, 0px)); right: max(6px, env(safe-area-inset-right)); left: max(8px, env(safe-area-inset-left)); }
   .attribution { font-size: 8px; padding: 2px 3px; }
-  .planner { overflow: visible; }
+
+  .planner-nav { margin: 11px 16px 0; }
+  .planner-nav button { min-height: 40px; }
+  .planner-nav + .planner-inner { padding-top: 15px; }
+  .tag-button { min-height: 36px; padding-inline: 8px; }
+  .catalog-pin { width: 40px; height: 42px; }
+  .planner { overflow: visible; border-radius: 16px; }
   .planner-inner { padding: 19px 16px 20px; }
   h1 { font-size: 28px; }
   .intro { max-width: none; margin: 6px 0 15px; font-size: 13px; }
   .network-info { padding: 12px 16px; border-radius: 0 0 15px 15px; }
   .swap { height: 44px; width: 40px; right: 6px; }
+  .itinerary { scroll-margin-top: calc(var(--mobile-topbar-height) + 8px); }
   .trip-stop button { min-height: 36px; }
   .station-actions button { min-height: 39px; }
 }
-@media (max-width: 402px) {
+@media (max-width: 510px) {
   .location-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .location-button { justify-content: center; }
+}
+@media (max-width: 358px) {
+  .brand > span:last-child { display: none; }
 }
 @media (min-width: 781px) and (max-height: 680px) {
   .planner-inner { padding-top: 21px; padding-bottom: 18px; }
@@ -408,6 +442,7 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
       <button id="about-open" class="button-icon about-button" type="button" title="О карте" aria-label="О карте">
         <svg class="icon"><use href="#i-info"/></svg>
       </button>
+      <button id="view-toggle" class="view-toggle" type="button" aria-controls="map" hidden>Карта</button>
     </div>
   </header>
 
@@ -2506,6 +2541,7 @@ window.BangkokPlacesData = [
       this.endpointPoints = [];
       this.route = null;
       this.endpoints = {};
+      this.pendingFit = null;
       this.resize();
       this.bindGestures();
       new ResizeObserver(() => this.resize()).observe(this.container);
@@ -2515,7 +2551,11 @@ window.BangkokPlacesData = [
       const width = this.canvas.clientWidth;
       const height = this.canvas.clientHeight;
       const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
-      if (!width || !height || (width === this.width && height === this.height && pixelRatio === this.pixelRatio)) return;
+      if (!width || !height) {
+        this.width = this.height = 0;
+        return;
+      }
+      if (width === this.width && height === this.height && pixelRatio === this.pixelRatio) return;
       if (!this.center) {
         const compact = width < 540;
         this.center = compact ? project(13.775, 100.533) : project(13.785, 100.548);
@@ -2525,7 +2565,8 @@ window.BangkokPlacesData = [
       this.canvas.width = Math.round(width * pixelRatio);
       this.canvas.height = Math.round(height * pixelRatio);
       this.container.style.setProperty("--map-height", `${height}px`);
-      this.requestDraw();
+      if (this.pendingFit) this.fit(...this.pendingFit);
+      else this.requestDraw();
     }
 
     get size() {
@@ -2555,6 +2596,7 @@ window.BangkokPlacesData = [
     }
 
     moveTo(center, zoom = this.zoom) {
+      this.pendingFit = null;
       this.center = {
         x: clamp(center.x, bounds.nw.x, bounds.se.x),
         y: clamp(center.y, bounds.nw.y, bounds.se.y)
@@ -2582,6 +2624,10 @@ window.BangkokPlacesData = [
 
     fit(stationList, max = 14.25) {
       if (stationList.length === 0) return;
+      if (!this.width || !this.height) {
+        this.pendingFit = [stationList, max];
+        return;
+      }
       const points = stationList.map(station => project(station.lat, station.lng));
       const xs = points.map(point => point.x);
       const ys = points.map(point => point.y);
@@ -3200,10 +3246,11 @@ window.BangkokPlacesData = [
   const badge = (line, name = lineName(line)) => `<span class="line-badge">${dot(line)}${escapeText(name)}</span>`;
   const pluralRules = new Intl.PluralRules("ru");
   const plural = (count, one, few, many) => ({ one, few, many }[pluralRules.select(count)] ?? many);
-  const compact = matchMedia("(max-width: 780px)");
+  const compact = matchMedia("(max-width: 780px), (max-height: 480px) and (pointer: coarse)");
   const form = byId("route-form");
   const itinerary = byId("itinerary");
   const examples = byId("examples");
+  const viewToggle = byId("view-toggle");
   const stationCard = byId("station-card");
   const layers = byId("layers-panel");
   const layersToggle = byId("layers-toggle");
@@ -3274,10 +3321,24 @@ window.BangkokPlacesData = [
     onView: positionPointCard
   });
 
-  function scrollToSection(element) {
+  function setMobileMapView(open) {
+    if (!compact.matches || document.body.classList.contains("map-view") === open) return;
+    document.body.classList.toggle("map-view", open);
+    viewToggle.textContent = open ? "Маршрут" : "Карта";
+    viewToggle.setAttribute("aria-controls", open ? "planner" : "map");
+    map.resize();
+    if (!open && catalogOpen) switchPanel(false);
+    window.scrollTo(0, 0);
+    viewToggle.focus({ preventScroll: true });
+  }
+
+  viewToggle.addEventListener("click", () => setMobileMapView(!document.body.classList.contains("map-view")));
+  viewToggle.hidden = false;
+
+  function scrollToItinerary() {
     if (!compact.matches) return;
     const behavior = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-    element.scrollIntoView({ block: "start", behavior });
+    itinerary.scrollIntoView({ block: "start", behavior });
   }
 
   function setError(message = "", key = null) {
@@ -3606,7 +3667,7 @@ window.BangkokPlacesData = [
     itinerary.hidden = false;
     if (scroll) viaSettings.open = false;
     fitRoute();
-    if (scroll) requestAnimationFrame(() => scrollToSection(itinerary));
+    if (scroll) requestAnimationFrame(scrollToItinerary);
     return true;
   }
 
@@ -3733,14 +3794,14 @@ window.BangkokPlacesData = [
       if (buildRoute({ scroll: false })) itinerary.querySelector(`[data-criterion="${criterion}"]`)?.focus({ preventScroll: true });
     } else if (button.dataset.stop) {
       const station = stationByCode.get(button.dataset.stop);
+      setMobileMapView(true);
       map.focus(station);
       showPoint(station);
-      scrollToSection(byId("map"));
     } else if (button.dataset.visit) {
       revealPlace(placeById.get(button.dataset.visit));
     } else if (button.dataset.action === "map") {
+      setMobileMapView(true);
       fitRoute();
-      scrollToSection(byId("map"));
     }
   });
 
@@ -3851,9 +3912,9 @@ window.BangkokPlacesData = [
       editPlace(place);
       return;
     }
+    setMobileMapView(true);
     map.focus(place, 15.4);
     showPoint(place);
-    scrollToSection(byId("map"));
   }
 
   function fitPlaces() {
@@ -4006,6 +4067,7 @@ window.BangkokPlacesData = [
       toggleLayers(false);
       layersToggle.focus();
     } else if (selectedPoint) closePoint();
+    else setMobileMapView(false);
   });
 
   byId("zoom-in").addEventListener("click", () => map.zoomBy(0.85));
@@ -4039,9 +4101,9 @@ window.BangkokPlacesData = [
       <button type="button" data-location="here">${icon("locate")} Отсюда</button>`;
     locationHint.hidden = false;
     const station = closest.station;
+    setMobileMapView(true);
     if (meters > 900) map.fit([point, station], 14.25);
     else map.focus(point, 15.1);
-    scrollToSection(byId("map"));
     notify(`Позиция найдена. Ближайшая станция — ${station.name}.`);
   }
 

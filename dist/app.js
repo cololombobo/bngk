@@ -13,10 +13,11 @@
   const badge = (line, name = lineName(line)) => `<span class="line-badge">${dot(line)}${escapeText(name)}</span>`;
   const pluralRules = new Intl.PluralRules("ru");
   const plural = (count, one, few, many) => ({ one, few, many }[pluralRules.select(count)] ?? many);
-  const compact = matchMedia("(max-width: 780px)");
+  const compact = matchMedia("(max-width: 780px), (max-height: 480px) and (pointer: coarse)");
   const form = byId("route-form");
   const itinerary = byId("itinerary");
   const examples = byId("examples");
+  const viewToggle = byId("view-toggle");
   const stationCard = byId("station-card");
   const layers = byId("layers-panel");
   const layersToggle = byId("layers-toggle");
@@ -87,10 +88,24 @@
     onView: positionPointCard
   });
 
-  function scrollToSection(element) {
+  function setMobileMapView(open) {
+    if (!compact.matches || document.body.classList.contains("map-view") === open) return;
+    document.body.classList.toggle("map-view", open);
+    viewToggle.textContent = open ? "Маршрут" : "Карта";
+    viewToggle.setAttribute("aria-controls", open ? "planner" : "map");
+    map.resize();
+    if (!open && catalogOpen) switchPanel(false);
+    window.scrollTo(0, 0);
+    viewToggle.focus({ preventScroll: true });
+  }
+
+  viewToggle.addEventListener("click", () => setMobileMapView(!document.body.classList.contains("map-view")));
+  viewToggle.hidden = false;
+
+  function scrollToItinerary() {
     if (!compact.matches) return;
     const behavior = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-    element.scrollIntoView({ block: "start", behavior });
+    itinerary.scrollIntoView({ block: "start", behavior });
   }
 
   function setError(message = "", key = null) {
@@ -419,7 +434,7 @@
     itinerary.hidden = false;
     if (scroll) viaSettings.open = false;
     fitRoute();
-    if (scroll) requestAnimationFrame(() => scrollToSection(itinerary));
+    if (scroll) requestAnimationFrame(scrollToItinerary);
     return true;
   }
 
@@ -546,14 +561,14 @@
       if (buildRoute({ scroll: false })) itinerary.querySelector(`[data-criterion="${criterion}"]`)?.focus({ preventScroll: true });
     } else if (button.dataset.stop) {
       const station = stationByCode.get(button.dataset.stop);
+      setMobileMapView(true);
       map.focus(station);
       showPoint(station);
-      scrollToSection(byId("map"));
     } else if (button.dataset.visit) {
       revealPlace(placeById.get(button.dataset.visit));
     } else if (button.dataset.action === "map") {
+      setMobileMapView(true);
       fitRoute();
-      scrollToSection(byId("map"));
     }
   });
 
@@ -664,9 +679,9 @@
       editPlace(place);
       return;
     }
+    setMobileMapView(true);
     map.focus(place, 15.4);
     showPoint(place);
-    scrollToSection(byId("map"));
   }
 
   function fitPlaces() {
@@ -819,6 +834,7 @@
       toggleLayers(false);
       layersToggle.focus();
     } else if (selectedPoint) closePoint();
+    else setMobileMapView(false);
   });
 
   byId("zoom-in").addEventListener("click", () => map.zoomBy(0.85));
@@ -852,9 +868,9 @@
       <button type="button" data-location="here">${icon("locate")} Отсюда</button>`;
     locationHint.hidden = false;
     const station = closest.station;
+    setMobileMapView(true);
     if (meters > 900) map.fit([point, station], 14.25);
     else map.focus(point, 15.1);
-    scrollToSection(byId("map"));
     notify(`Позиция найдена. Ближайшая станция — ${station.name}.`);
   }
 
