@@ -4091,6 +4091,7 @@ window.BangkokPlacesData = [
   if (offlineSave && window.isSecureContext && "serviceWorker" in navigator && "caches" in window) {
     const status = byId("offline-status");
     const bundledMap = byId("offline-download").href;
+    const canonicalMap = bundledMap.replace(/\.html$/, "");
     const cacheName = "bangkok-rail-offline";
     function showOfflineSaved() {
       offlineSave.textContent = "Обновить офлайн-копию";
@@ -4113,12 +4114,16 @@ window.BangkokPlacesData = [
       status.textContent = "Сохраняем карту и улицы…";
       try {
         await navigator.serviceWorker.register("./offline-sw.js");
-        const response = await fetch(bundledMap, { cache: "reload", redirect: "error" });
-        if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) {
+        const response = await fetch(bundledMap, { cache: "reload" });
+        const contentType = response.headers.get("content-type");
+        if (response.status !== 200 || !response.body || !contentType?.includes("text/html") ||
+            (response.url !== bundledMap && response.url !== canonicalMap)) {
           throw new Error("Offline HTML is unavailable.");
         }
+        // Store the document as a fresh response so it can serve a navigation after a redirect.
+        const copy = new Response(response.body, { headers: { "Content-Type": contentType } });
         const cache = await caches.open(cacheName);
-        await cache.put(bundledMap, response);
+        await cache.put(bundledMap, copy);
         await navigator.serviceWorker.ready;
         showOfflineSaved();
       } catch {
