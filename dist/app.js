@@ -1,7 +1,9 @@
 "use strict";
 
 (function startPlanner() {
-  const { lines, stations, stationByCode, searchStations, nearestStation, findRoute } = window.BangkokRail;
+  const { lines, stations, stationByCode, searchStations, nearestStation } = window.BangkokRail;
+  const { tags, tagById, placeById, searchPlaces, onMap, canVisit, today, mapsLink, saveAnnotation } = window.BangkokPlaces;
+  const { planTrip, pointId } = window.BangkokOutings;
   const byId = id => document.getElementById(id);
   const escapeText = value => String(value).replace(/[&<>"']/g, character =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -23,8 +25,16 @@
   const error = byId("form-error");
   const notification = byId("notification");
   const about = byId("about");
+  const viaSettings = byId("via-settings");
+  const viaTags = byId("via-tags");
+  const viaLimit = byId("via-limit");
+  const catalogSearch = byId("place-search");
+  const catalogList = byId("catalog-list");
+  const editor = byId("place-editor");
   const endpoints = { from: null, to: null };
   const visibleLines = new Set(lines.map(line => line.id));
+  const selectedTags = new Set();
+  const pinned = new Set();
   const fields = ["from", "to"].map(key => {
     const input = byId(key);
     return {
@@ -33,22 +43,45 @@
     };
   });
 
-  let selectedStation = null;
+  let selectedPoint = null;
   let route = null;
   let criterion = "fastest";
   let closest = null;
+  let userLocation = null;
   let notificationTimer;
   let locationPending = false;
+  let catalogOpen = false;
+  let catalogTag = null;
+  let catalogMatches = [];
+  let catalogLimit = 30;
+  let editing = null;
+  let draft = null;
+
+  function pointById(id) {
+    return id === "here" ? userLocation : stationByCode.get(id) ?? placeById.get(id);
+  }
+
+  function placeColor(place) {
+    return place.color || tagById.get(place.biennale ? "biennale" : place.category).color;
+  }
 
   const map = new window.RailMap({
     canvas: byId("map-canvas"),
     scale: byId("scale"),
-    onClick: station => {
+    onClick: point => {
       if (!layers.hidden) toggleLayers(false);
-      if (selectedStation === station) closeStation();
-      else showStation(station);
+      if (point?.cluster) {
+        if (map.zoom < 16.8) {
+          closePoint();
+          const first = point.cluster[0];
+          map.focus(first, Math.min(17.25, map.zoom + 1.65));
+        } else {
+          showCluster(point.cluster);
+        }
+      } else if (selectedPoint === point) closePoint();
+      else showPoint(point);
     },
-    onView: placeStationCard
+    onView: positionPointCard
   });
 
   function scrollToSection(element) {
@@ -71,8 +104,17 @@
   }
 
   function updateMap() {
-    map.setState({ visibleLines, endpoints, route, activeStation: selectedStation?.code ?? null });
-    byId("fit-route").hidden = !route;
+    const visiblePlaces = catalogOpen ? catalogMatches.filter(onMap) : [...pinned];
+    map.setState({
+      visibleLines, endpoints, route,
+      endpointPoints: [pointById(endpoints.from), pointById(endpoints.to)],
+      activeStation: selectedPoint?.code ?? null,
+      activePlace: selectedPoint?.id && selectedPoint.id !== "here" ? selectedPoint : null,
+      placeMarkers: visiblePlaces
+    });
+    const focusButton = byId("fit-route");
+    focusButton.hidden = catalogOpen ? !visiblePlaces.length : !route;
+    focusButton.querySelector("span").textContent = catalogOpen ? "К местам" : "К маршруту";
   }
 
   function hideOptions(field) {
@@ -82,20 +124,38 @@
     field.active = -1;
   }
 
+  function searchPoints(query) {
+    const key = query.trim().toLowerCase();
+    const metro = searchStations(query);
+    const places = key ? searchPlaces(query).filter(onMap).slice(0, 5) : [];
+    const matches = [...metro, ...places];
+    if (userLocation && (!key || userLocation.name.toLowerCase().includes(key))) matches.unshift(userLocation);
+    const score = point => {
+      if (!key) return 0;
+      const name = point.name.toLowerCase();
+      if (name === key || point.code?.toLowerCase() === key) return 0;
+      return name.startsWith(key) ? 1 : 2;
+    };
+    return matches.sort((a, b) => score(a) - score(b)).slice(0, 10);
+  }
+
   function renderOptions(field) {
     for (const other of fields) if (other !== field) hideOptions(other);
     const query = endpoints[field.key] ? "" : field.input.value;
-    field.matches = searchStations(query);
+    field.matches = searchPoints(query);
     field.active = -1;
     field.input.removeAttribute("aria-activedescendant");
-    field.list.innerHTML = field.matches.map((station, index) => {
-      const displayLines = station.lines.map(lineName).join(" / ");
-      return `<li class="option" role="option" aria-selected="false" id="${field.key}-choice-${index}" data-code="${station.code}">
-        ${dot(station.lines[0])}
-        <span class="option-copy"><strong>${escapeText(station.name)}</strong><small>${escapeText(displayLines)} · <span lang="th">${escapeText(station.thai)}</span></small></span>
-        <span class="option-code">${station.code}</span>
+    field.list.innerHTML = field.matches.map((point, index) => {
+      const color = point.lines?.[0].color ?? (point.id === "here" ? "#2878d0" : placeColor(point));
+      const description = point.code
+        ? `${escapeText(point.lines.map(lineName).join(" / "))} · <span lang="th">${escapeText(point.thai)}</span>`
+        : point.id === "here" ? "Геолокация" : escapeText(tagById.get(point.category).label);
+      return `<li class="option" role="option" aria-selected="false" id="${field.key}-choice-${index}" data-code="${pointId(point)}">
+        ${dot({ color })}
+        <span class="option-copy"><strong>${escapeText(point.name)}</strong><small>${description}</small></span>
+        ${point.code ? `<span class="option-code">${point.code}</span>` : ""}
       </li>`;
-    }).join("") || '<li class="option-empty" role="presentation">Станция не найдена. Попробуйте название на английском, тайском или код.</li>';
+    }).join("") || '<li class="option-empty" role="presentation">Ничего не найдено. Попробуйте другое название или код станции.</li>';
     field.list.hidden = false;
     field.input.setAttribute("aria-expanded", "true");
   }
@@ -114,17 +174,18 @@
   function setEndpoint(key, code, focusMap = false) {
     endpoints[key] = code;
     const field = fields.find(field => field.key === key);
-    const station = stationByCode.get(code);
-    field.input.value = station?.name ?? "";
+    const point = pointById(code);
+    field.input.value = point?.name ?? "";
     field.clear.hidden = !field.input.value;
     hideOptions(field);
     setError();
+    if (pinned.delete(point)) renderVia();
     resetItinerary();
     if (route) {
       fitRoute();
-    } else if (station) {
-      closeStation();
-      if (focusMap) map.focus(station, 14.65);
+    } else if (point) {
+      closePoint();
+      if (focusMap) map.focus(point, 14.65);
     }
   }
 
@@ -153,8 +214,8 @@
       } else if (event.key === "Enter" && !field.list.hidden && field.matches.length > 0 &&
                  (field.active !== -1 || (!endpoints[field.key] && field.input.value.trim()))) {
         event.preventDefault();
-        const station = field.matches[Math.max(0, field.active)];
-        setEndpoint(field.key, station.code, true);
+        const point = field.matches[Math.max(0, field.active)];
+        setEndpoint(field.key, pointId(point), true);
       }
     });
     field.field.addEventListener("focusout", event => {
@@ -177,22 +238,29 @@
     });
   }
 
-  function closeStation() {
-    selectedStation = null;
+  function closePoint() {
+    selectedPoint = null;
     stationCard.hidden = true;
-    map.setState({ activeStation: null });
+    map.setState({ activeStation: null, activePlace: null });
   }
 
-  function showStation(station) {
-    if (!station) {
-      closeStation();
+  function showPoint(point) {
+    if (!point) {
+      closePoint();
       return;
     }
-    selectedStation = station;
-    map.setState({ activeStation: station.code });
+    selectedPoint = point;
+    map.setState({ activeStation: point.code ?? null, activePlace: point.code ? null : point });
+    stationCard.classList.toggle("place-card", !point.code);
+    stationCard.innerHTML = point.code ? stationDetails(point) : placeDetails(point);
+    stationCard.hidden = false;
+    positionPointCard();
+  }
+
+  function stationDetails(station) {
     const connections = station.connections.map(other => `<button class="transfer-link" type="button" data-station="${other.code}" title="${escapeText(other.lines.map(lineName).join(", "))}">${escapeText(other.name)} · ${other.code}</button>`).join("");
     const mainBadges = station.lines.map(line => badge(line)).join("");
-    stationCard.innerHTML = `
+    return `
       <button class="button-icon" type="button" data-action="close" aria-label="Закрыть карточку станции">${icon("clear")}</button>
       <div class="line-badges">${mainBadges}</div>
       <h2>${escapeText(station.name)}</h2>
@@ -203,30 +271,77 @@
         <button type="button" data-action="to">Сюда</button>
         <button class="station-detail" type="button" data-action="detail" aria-label="Приблизить улицы рядом со станцией" title="Улицы рядом">${icon("plus")}</button>
       </div>`;
-    stationCard.hidden = false;
-    placeStationCard();
+  }
+
+  const dateLabel = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", timeZone: "UTC" });
+
+  function placeDetails(place) {
+    const category = tagById.get(place.category);
+    const badges = badge(category, category.label) +
+      (place.biennale ? badge(tagById.get("biennale"), "Биеннале") : "");
+    const date = today();
+    const event = place.event ?? place.biennale;
+    let timing = "";
+    if (event?.pending) timing = "Выставка на этой площадке готовится";
+    else if (event && date > event.end) timing = "Событие завершилось";
+    else if (event && date < event.start) timing = `С ${dateLabel.format(new Date(event.start))}`;
+    else if (event) timing = `До ${dateLabel.format(new Date(event.end))}`;
+    const stars = place.stars ? `<span class="place-stars" aria-label="${place.stars} из 5">${"★".repeat(place.stars)}</span>` : "";
+    return `
+      <button class="button-icon" type="button" data-action="close" aria-label="Закрыть карточку места">${icon("clear")}</button>
+      <div class="line-badges">${badges}${stars}</div>
+      <h2>${escapeText(place.name)}</h2>
+      ${place.address || timing ? `<p>${[place.address, timing].filter(Boolean).map(escapeText).join(" · ")}</p>` : ""}
+      ${place.note ? `<p class="place-note">${escapeText(place.note)}</p>` : ""}
+      ${place.personalNote ? `<p class="personal-note">${escapeText(place.personalNote)}</p>` : ""}
+      <div class="place-links">
+        <a href="${mapsLink(place)}" target="_blank" rel="noopener">Google Maps</a>
+        ${place.url ? `<a href="${escapeText(place.url)}" target="_blank" rel="noopener">О месте</a>` : ""}
+        <button class="text-button" type="button" data-action="edit">${icon("edit")} Мои отметки</button>
+      </div>
+      <div class="station-actions">
+        <button type="button" data-action="from">Отсюда</button>
+        <button type="button" data-action="to">Сюда</button>
+        ${canVisit(place) ? `<button type="button" data-action="pin" aria-pressed="${pinned.has(place)}">${pinned.has(place) ? "Убрать остановку" : "Заехать по пути"}</button>` : ""}
+      </div>`;
+  }
+
+  function showCluster(places) {
+    showPoint(places[0]);
+    stationCard.innerHTML = `
+      <button class="button-icon" type="button" data-action="close" aria-label="Закрыть список мест">${icon("clear")}</button>
+      <h2>Места рядом</h2>
+      <div class="station-connections">${places.map(place =>
+        `<button class="transfer-link" type="button" data-nearby="${place.id}">${escapeText(place.name)}</button>`).join("")}</div>`;
+    positionPointCard();
   }
 
   stationCard.addEventListener("click", event => {
     const button = event.target.closest("button");
-    if (!button || !selectedStation) return;
+    if (!button || !selectedPoint) return;
     const action = button.dataset.action;
-    if (button.dataset.station) {
+    if (button.dataset.nearby) showPoint(placeById.get(button.dataset.nearby));
+    else if (button.dataset.station) {
       const station = stationByCode.get(button.dataset.station);
       map.focus(station, Math.max(map.zoom, 14.25));
-      showStation(station);
-    } else if (action === "close") closeStation();
-    else if (action === "detail") map.focus(selectedStation, Math.max(16.1, map.zoom));
-    else if (action === "from" || action === "to") {
-      const station = selectedStation;
-      setEndpoint(action, station.code);
-      notify(`${action === "from" ? "Откуда" : "Куда"} — ${station.name}`);
+      showPoint(station);
+    } else if (action === "close") closePoint();
+    else if (action === "detail") map.focus(selectedPoint, Math.max(16.1, map.zoom));
+    else if (action === "edit") editPlace(selectedPoint);
+    else if (action === "pin") {
+      togglePin(selectedPoint);
+      showPoint(selectedPoint);
+    } else if (action === "from" || action === "to") {
+      const point = selectedPoint;
+      setEndpoint(action, pointId(point));
+      if (catalogOpen) switchPanel(false);
+      notify(`${action === "from" ? "Откуда" : "Куда"} — ${point.name}`);
     }
   });
 
-  function placeStationCard() {
-    if (!selectedStation || stationCard.hidden) return;
-    const { x, y } = map.stationScreen(selectedStation);
+  function positionPointCard() {
+    if (!selectedPoint || stationCard.hidden) return;
+    const { x, y } = map.pointScreen(selectedPoint);
     const visible = x >= -10 && y >= -10 && x <= map.width + 10 && y <= map.height + 10;
     stationCard.style.visibility = visible ? "visible" : "hidden";
     if (!visible) return;
@@ -241,7 +356,9 @@
 
   function refreshRoute() {
     const { from, to } = endpoints;
-    route = from && to && from !== to ? findRoute(from, to, { criterion }) : null;
+    route = planTrip(pointById(from), pointById(to), {
+      criterion, tags: [...selectedTags], required: [...pinned], extraMinutes: Number(viaLimit.value)
+    });
     updateMap();
   }
 
@@ -256,15 +373,15 @@
     if (endpoints[field.key]) return endpoints[field.key];
     const query = field.input.value.trim().toLowerCase();
     if (!query) return null;
-    const matches = searchStations(query).filter(station =>
-      station.code.toLowerCase() === query || station.name.toLowerCase() === query || station.thai === query);
-    return matches.length === 1 ? matches[0].code : null;
+    const matches = searchPoints(query).filter(point =>
+      point.code?.toLowerCase() === query || point.name.toLowerCase() === query || point.thai === query);
+    return matches.length === 1 ? pointId(matches[0]) : null;
   }
 
   function fitRoute() {
     if (!route) return;
-    closeStation();
-    map.fit([...route.stopCodes].map(code => stationByCode.get(code)));
+    closePoint();
+    map.fit(route.points);
   }
 
   function buildRoute({ scroll = true } = {}) {
@@ -272,23 +389,23 @@
       const code = resolveEndpoint(field);
       if (!code) {
         const end = field.key === "from" ? "отправления" : "назначения";
-        setError(`Выберите станцию ${end} из списка или на карте.`, field.key);
+        setError(`Выберите точку ${end} из списка или на карте.`, field.key);
         field.input.focus();
         renderOptions(field);
         return false;
       }
       endpoints[field.key] = code;
-      field.input.value = stationByCode.get(code).name;
+      field.input.value = pointById(code).name;
       field.clear.hidden = false;
       hideOptions(field);
     }
     if (endpoints.from === endpoints.to) {
-      setError("Выберите разные станции отправления и назначения.", "to");
+      setError("Выберите разные точки начала и конца маршрута.", "to");
       return false;
     }
     refreshRoute();
     if (!route) {
-      setError("Для этой пары станций маршрут не найден.");
+      setError("Между выбранными точками маршрут не найден.");
       return false;
     }
     if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
@@ -297,6 +414,7 @@
     renderItinerary();
     examples.hidden = true;
     itinerary.hidden = false;
+    if (scroll) viaSettings.open = false;
     fitRoute();
     if (scroll) requestAnimationFrame(() => scrollToSection(itinerary));
     return true;
@@ -361,22 +479,60 @@
     </li>`;
   }
 
+  function timeText(minutes) {
+    const rounded = Math.round(minutes);
+    return rounded >= 60
+      ? `${Math.floor(rounded / 60)} ч${rounded % 60 ? ` ${rounded % 60} мин` : ""}`
+      : `${rounded} мин`;
+  }
+
+  function renderVisitCard(place, index) {
+    return `<button type="button" class="visit-card" data-visit="${place.id}">
+      <span class="visit-number" style="background:${placeColor(place)}">${index}</span>
+      <span class="visit-name">${escapeText(place.name)}</span><small>≈ ${timeText(place.minutes)}</small>
+    </button>`;
+  }
+
+  function renderLeg(leg) {
+    if (leg.type === "ride") return renderRide(leg);
+    if (leg.type === "transfer") return renderTransfer(leg);
+    if (leg.type === "visit") return `<li>${renderVisitCard(leg.place, leg.index)}</li>`;
+    const origin = encodeURIComponent(leg.from.lat + "," + leg.from.lng);
+    const destination = encodeURIComponent(leg.to.lat + "," + leg.to.lng);
+    const directions = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+    return `<li class="walk-step"><strong>Пешком · ≈ ${timeText(leg.minutes)}</strong>
+      <span>${escapeText(leg.from.name)} → ${escapeText(leg.to.name)}</span>
+      <a href="${directions}" target="_blank" rel="noopener" class="text-button">Путь пешком</a>
+    </li>`;
+  }
+
   function renderItinerary() {
-    const times = `≈ ${Math.round(route.minutes)} мин`;
+    const times = `≈ ${timeText(route.minutes)}`;
     const stops = `${route.stops} ${plural(route.stops, "остановка", "остановки", "остановок")}`;
     const transfers = `${route.transfers} ${plural(route.transfers, "пересадка", "пересадки", "пересадок")}`;
+    const count = route.visits.length;
+    const tour = count ? `<span>${icon("pin")}${count} ${plural(count, "место", "места", "мест")}</span>` : "";
+    const details = `<ol class="trip-steps">${route.legs.map(renderLeg).join("")}</ol>`;
+    const missing = route.missingTags.map(tag => `«${tagById.get(tag).label}»`).join(", ");
+    const note = route.overBudget
+      ? `Закреплённые места требуют ≈ ${timeText(route.extraMinutes)} сверх прямой поездки.`
+      : missing ? `Пропущены категории ${missing}.` : "";
     itinerary.innerHTML = `
       <div class="itinerary-heading"><h2>Маршрут</h2><button class="text-button" type="button" data-action="map">${icon("fit")} На карте</button></div>
       <div class="trip-summary" aria-live="polite">
         <span>${icon("clock")}<b>${times}</b></span>
-        ${route.stops ? `<span>${icon("train")}${stops}</span><span>${icon("transfer")}${transfers}</span>` : "<span>Пешком</span>"}
+        ${count ? `${tour}<span>+ ${timeText(route.extraMinutes)} к поездке</span>`
+          : route.stops ? `<span>${icon("train")}${stops}</span><span>${icon("transfer")}${transfers}</span>` : "<span>Пешком</span>"}
       </div>
-      ${route.stops ? `<p class="trip-note">Примерное время с ожиданием и переходами</p>
+      <p class="trip-note">${count ? "Время включает ожидание поездов, пешие участки и посещения." : "Примерное время с ожиданием и переходами"}</p>
+      ${note ? `<p class="trip-via-note">${escapeText(note)}</p>` : ""}
+      ${count ? `<ol class="visit-list">${route.visits.map((place, index) => `<li>${renderVisitCard(place, index + 1)}</li>`).join("")}</ol>` : ""}
+      ${route.stops ? `
       <div class="criterion" role="group" aria-label="Как подобрать маршрут">
         <button aria-pressed="${criterion === "fastest"}" data-criterion="fastest" type="button">Быстрее</button>
         <button aria-pressed="${criterion === "fewest-transfers"}" data-criterion="fewest-transfers" type="button">Меньше пересадок</button>
       </div>` : ""}
-      <ol class="trip-steps">${route.legs.map(leg => leg.type === "ride" ? renderRide(leg) : renderTransfer(leg)).join("")}</ol>`;
+      ${count ? `<details class="trip-details"><summary>Поезда и пешие участки</summary>${details}</details>` : details}`;
   }
 
   itinerary.addEventListener("click", event => {
@@ -388,12 +544,230 @@
     } else if (button.dataset.stop) {
       const station = stationByCode.get(button.dataset.stop);
       map.focus(station);
-      showStation(station);
+      showPoint(station);
       scrollToSection(byId("map"));
+    } else if (button.dataset.visit) {
+      revealPlace(placeById.get(button.dataset.visit));
     } else if (button.dataset.action === "map") {
       fitRoute();
       scrollToSection(byId("map"));
     }
+  });
+
+  function tagButton(tag, pressed) {
+    return `<button type="button" class="tag-button" data-tag="${tag.id}" aria-pressed="${pressed}">${tag.color ? dot(tag) : ""}${escapeText(tag.label)}</button>`;
+  }
+
+  function renderVia() {
+    for (const button of viaTags.querySelectorAll("button")) {
+      button.setAttribute("aria-pressed", String(selectedTags.has(button.dataset.tag)));
+    }
+    const parts = [];
+    if (selectedTags.size) parts.push(`${selectedTags.size} ${plural(selectedTags.size, "категория", "категории", "категорий")}`);
+    if (pinned.size) parts.push(`${pinned.size} ${plural(pinned.size, "остановка", "остановки", "остановок")}`);
+    byId("via-summary").textContent = parts.join(" · ");
+    const list = byId("pinned-places");
+    list.hidden = !pinned.size;
+    list.innerHTML = [...pinned].map(place => `<button type="button" data-remove="${place.id}" aria-label="Убрать ${escapeText(place.name)} из маршрута">
+      <span>${escapeText(place.name)}</span>${icon("clear")}</button>`).join("");
+  }
+
+  function updateTrip(fit = false) {
+    refreshRoute();
+    if (route && !itinerary.hidden) renderItinerary();
+    if (route && fit) fitRoute();
+  }
+
+  function togglePin(place) {
+    if (!onMap(place) || !canVisit(place)) return;
+    if (Object.values(endpoints).includes(place.id)) {
+      notify("Это место уже выбрано как начало или конец.");
+      return;
+    }
+    if (pinned.has(place)) pinned.delete(place);
+    else {
+      pinned.add(place);
+      viaSettings.open = true;
+      notify("Остановка добавлена в маршрут.");
+    }
+    renderVia();
+    updateTrip();
+    if (catalogOpen) renderCatalog();
+  }
+
+  viaTags.innerHTML = tags.map(tag => tagButton(tag, false)).join("");
+  viaTags.addEventListener("click", event => {
+    const tag = event.target.closest("[data-tag]")?.dataset.tag;
+    if (!tag) return;
+    if (selectedTags.has(tag)) selectedTags.delete(tag);
+    else selectedTags.add(tag);
+    renderVia();
+    updateTrip(true);
+  });
+  viaLimit.addEventListener("change", () => updateTrip(true));
+  byId("pinned-places").addEventListener("click", event => {
+    const id = event.target.closest("[data-remove]")?.dataset.remove;
+    if (id) togglePin(placeById.get(id));
+  });
+
+  function renderCatalog() {
+    const day = today();
+    catalogMatches = searchPlaces(catalogSearch.value, catalogTag);
+    byId("catalog-count").textContent = catalogMatches.length
+      ? `${catalogMatches.length} ${plural(catalogMatches.length, "место", "места", "мест")}` : "Места не найдены";
+    byId("catalog-tags").innerHTML = [{ id: "", label: "Все" }, ...tags]
+      .map(tag => tagButton(tag, tag.id === (catalogTag ?? ""))).join("");
+    catalogList.innerHTML = catalogMatches.slice(0, catalogLimit).map(place => {
+      const available = onMap(place) && canVisit(place, day);
+      const selected = pinned.has(place);
+      const stars = place.stars ? ` · <span class="place-stars" aria-label="${place.stars} из 5">${"★".repeat(place.stars)}</span>` : "";
+      const meta = !onMap(place) ? "Вне карты Бангкока" : [
+        tagById.get(place.category).label,
+        place.biennale ? "Биеннале" : "",
+        !canVisit(place, day) ? "Событие вне дат" : ""
+      ].filter(Boolean).join(" · ");
+      const label = selected ? "Убрать остановку" : "Заехать по пути";
+      return `<li class="catalog-item">
+        <button class="catalog-show" type="button" data-place="${place.id}">
+          ${dot({ color: placeColor(place) })}
+          <span><strong>${escapeText(place.name)}</strong><small>${escapeText(meta)}${stars}</small></span>
+        </button>
+        <button class="catalog-pin" type="button" data-pin="${place.id}" aria-label="${label} · ${escapeText(place.name)}" title="${label}" aria-pressed="${selected}" ${available ? "" : "disabled"}>
+          ${icon(selected ? "minus" : "plus")}
+        </button>
+      </li>`;
+    }).join("");
+    byId("catalog-more").hidden = catalogLimit >= catalogMatches.length;
+    updateMap();
+  }
+
+  function switchPanel(open) {
+    catalogOpen = open;
+    byId("route-tab").setAttribute("aria-pressed", String(!open));
+    byId("places-tab").setAttribute("aria-pressed", String(open));
+    byId("route-panel").hidden = open;
+    byId("places-panel").hidden = !open;
+    byId("planner").scrollTop = 0;
+    closePoint();
+    if (open) renderCatalog();
+    else {
+      updateMap();
+      if (route) fitRoute();
+    }
+  }
+
+  function revealPlace(place) {
+    if (!onMap(place)) {
+      editPlace(place);
+      return;
+    }
+    map.focus(place, 15.4);
+    showPoint(place);
+    scrollToSection(byId("map"));
+  }
+
+  function fitPlaces() {
+    closePoint();
+    map.fit(catalogMatches.filter(onMap), 15.2);
+  }
+
+  byId("route-tab").addEventListener("click", () => switchPanel(false));
+  byId("places-tab").addEventListener("click", () => switchPanel(true));
+  catalogSearch.addEventListener("input", () => {
+    catalogLimit = 30;
+    renderCatalog();
+  });
+  byId("catalog-tags").addEventListener("click", event => {
+    const button = event.target.closest("[data-tag]");
+    if (!button) return;
+    catalogTag = button.dataset.tag || null;
+    catalogLimit = 30;
+    closePoint();
+    renderCatalog();
+    if (catalogTag) fitPlaces();
+    document.querySelector(`#catalog-tags [data-tag="${catalogTag ?? ""}"]`)?.focus({ preventScroll: true });
+  });
+  catalogList.addEventListener("click", event => {
+    const button = event.target.closest("button");
+    if (button?.dataset.place) revealPlace(placeById.get(button.dataset.place));
+    else if (button?.dataset.pin) {
+      const id = button.dataset.pin;
+      togglePin(placeById.get(id));
+      catalogList.querySelector(`[data-pin="${id}"]`)?.focus({ preventScroll: true });
+    }
+  });
+  byId("catalog-more").addEventListener("click", () => {
+    catalogLimit += 30;
+    renderCatalog();
+  });
+
+  const palette = [
+    ["#a9414a", "Красный"], ["#bd641f", "Оранжевый"], ["#827020", "Золотой"],
+    ["#327354", "Зелёный"], ["#286593", "Синий"], ["#794496", "Фиолетовый"]
+  ];
+
+  function renderEditorChoices() {
+    for (const button of byId("edit-stars").querySelectorAll("button")) {
+      const rating = Number(button.dataset.rating);
+      button.setAttribute("aria-pressed", String(rating === 0 ? draft.stars === 0 : rating <= draft.stars));
+    }
+    for (const button of byId("edit-colors").querySelectorAll("button")) {
+      button.setAttribute("aria-pressed", String(button.dataset.color === draft.color));
+    }
+  }
+
+  function editPlace(place) {
+    editing = place;
+    draft = { stars: place.stars ?? 0, color: place.color ?? "" };
+    byId("edit-place-name").textContent = place.name;
+    byId("edit-map-link").href = mapsLink(place);
+    byId("edit-map-link").hidden = onMap(place);
+    byId("edit-note").value = place.personalNote ?? "";
+    byId("edit-error").hidden = true;
+    renderEditorChoices();
+    if (typeof editor.showModal === "function") editor.showModal();
+    else editor.setAttribute("open", "");
+  }
+
+  function closeEditor() {
+    if (typeof editor.close === "function") editor.close();
+    else editor.removeAttribute("open");
+  }
+
+  byId("edit-stars").innerHTML = [1, 2, 3, 4, 5].map(rating =>
+    `<button type="button" data-rating="${rating}" aria-label="${rating} из 5">★</button>`).join("") +
+    '<button type="button" class="rating-clear" data-rating="0">Снять</button>';
+  byId("edit-colors").innerHTML = palette.map(([color, name]) =>
+    `<button type="button" class="color-choice" data-color="${color}" aria-label="${name}">${dot({ color })}</button>`).join("") +
+    '<button type="button" class="color-default" data-color="">По категории</button>';
+  byId("edit-stars").addEventListener("click", event => {
+    const button = event.target.closest("[data-rating]");
+    if (!button) return;
+    draft.stars = Number(button.dataset.rating);
+    renderEditorChoices();
+  });
+  byId("edit-colors").addEventListener("click", event => {
+    const button = event.target.closest("[data-color]");
+    if (!button) return;
+    draft.color = button.dataset.color;
+    renderEditorChoices();
+  });
+  byId("edit-close").addEventListener("click", closeEditor);
+  byId("edit-place-form").addEventListener("submit", event => {
+    event.preventDefault();
+    try {
+      saveAnnotation(editing, { ...draft, note: byId("edit-note").value });
+    } catch {
+      const error = byId("edit-error");
+      error.textContent = "Браузер не смог сохранить отметки. Проверьте доступ к локальному хранилищу.";
+      error.hidden = false;
+      return;
+    }
+    closeEditor();
+    updateTrip();
+    if (catalogOpen) renderCatalog();
+    if (selectedPoint === editing) showPoint(editing);
+    notify("Отметки сохранены.");
   });
 
   function updateLayers() {
@@ -428,37 +802,42 @@
     for (const field of fields) if (!field.field.contains(event.target)) hideOptions(field);
   });
   document.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || about.open) return;
+    if (event.key !== "Escape" || about.open || editor.open) return;
     if (!layers.hidden) {
       toggleLayers(false);
       layersToggle.focus();
-    } else if (selectedStation) closeStation();
+    } else if (selectedPoint) closePoint();
   });
 
   byId("zoom-in").addEventListener("click", () => map.zoomBy(0.85));
   byId("zoom-out").addEventListener("click", () => map.zoomBy(-0.85));
   byId("fit-network").addEventListener("click", () => {
-    closeStation();
+    closePoint();
     const showing = stations.filter(station => station.lines.some(line => visibleLines.has(line.id)));
     map.fit(showing.length ? showing : stations, 13);
   });
-  byId("fit-route").addEventListener("click", fitRoute);
+  byId("fit-route").addEventListener("click", () => catalogOpen ? fitPlaces() : fitRoute());
 
   function showLocation(position) {
     const { latitude, longitude, accuracy } = position.coords;
     const point = { lat: latitude, lng: longitude, accuracy };
     closest = nearestStation(point);
-    if (closest.distance > 12000) {
+    if (!onMap(point) || closest.distance > 12000) {
+      userLocation = null;
+      for (const { key } of fields) if (endpoints[key] === "here") setEndpoint(key, null);
       map.setState({ location: null });
       locationHint.hidden = true;
       notify("Ваше местоположение за пределами сети Бангкока.");
       return;
     }
-    map.setState({ location: point });
-    closeStation();
+    userLocation = { ...point, id: "here", name: "Моё местоположение" };
+    map.setState({ location: userLocation });
+    updateTrip();
+    closePoint();
     const meters = closest.distance;
     const distance = meters >= 1000 ? `${(meters / 1000).toFixed(1).replace(".", ",")} км` : `${Math.max(10, Math.round(meters / 10) * 10)} м`;
-    locationHint.innerHTML = `<button type="button" title="Выбрать ближайшую станцию как отправление">${icon("locate")}<span>Ближайшая — <b>${escapeText(closest.station.name)}</b><br>${distance} по прямой · выбрать</span></button>`;
+    locationHint.innerHTML = `<button type="button" data-location="station" title="Выбрать ближайшую станцию как отправление">${icon("train")}<span>Ближайшая — <b>${escapeText(closest.station.name)}</b><br>${distance} по прямой</span></button>
+      <button type="button" data-location="here">${icon("locate")} Отсюда</button>`;
     locationHint.hidden = false;
     const station = closest.station;
     if (meters > 900) map.fit([point, station], 14.25);
@@ -467,8 +846,12 @@
     notify(`Позиция найдена. Ближайшая станция — ${station.name}.`);
   }
 
-  locationHint.addEventListener("click", () => {
-    if (closest) setEndpoint("from", closest.station.code, true);
+  locationHint.addEventListener("click", event => {
+    const choice = event.target.closest("[data-location]")?.dataset.location;
+    if (choice && closest) {
+      setEndpoint("from", choice === "here" ? "here" : closest.station.code, true);
+      if (catalogOpen) switchPanel(false);
+    }
   });
 
   function finishLocating() {
@@ -508,5 +891,6 @@
   byId("network-count").textContent = `${lines.length} линий · ${stations.length} ${plural(stations.length, "станция", "станции", "станций")}`;
   document.querySelector(".network-lines").innerHTML = ["#6c9e31", "#2259b3", "#cf527f"]
     .map((color, index) => `<i style="--route-color:${color};--sample-width:${21 - index * 3}px"></i>`).join("");
+  renderVia();
   updateMap();
 })();

@@ -162,16 +162,19 @@
     return { from, to, minutes, transfers, stops, stopCodes, legs };
   }
 
-  // Station codes are the interface to the planner. Platform nodes keep the
-  // direction change at Tha Phra and the Pink Line shuttle explicit.
-  function findRoute(from, to, { criterion = "fastest" } = {}) {
-    const starts = nodesByStation.get(from);
-    if (!starts || !nodesByStation.has(to)) return null;
-    if (from === to) return summarize(from, to, [], 0, 0);
+  const routeTrees = new Map();
+
+  // Reuse one search per origin and criterion when scoring waypoint detours.
+  function routesFrom(from, criterion) {
+    const key = `${criterion}/${from}`;
+    if (routeTrees.has(key)) return routeTrees.get(key);
     const costs = Array(nodes.length).fill(null);
     const parents = Array(nodes.length).fill(null);
     const settled = new Uint8Array(nodes.length);
-    for (const node of starts) costs[node.id] = { minutes: node.run.wait, transfers: 0 };
+    const destinations = new Map();
+    for (const node of nodesByStation.get(from)) {
+      costs[node.id] = { minutes: node.run.wait, transfers: 0, riding: false, walking: 0 };
+    }
 
     for (let count = 0; count < nodes.length; count += 1) {
       let best = -1;
@@ -181,18 +184,16 @@
       if (best < 0) break;
       const node = nodes[best];
       const cost = costs[best];
-      if (node.station.code === to) {
-        const path = [];
-        for (let id = best; parents[id]; id = parents[id].node.id) path.push(parents[id]);
-        return summarize(from, to, path.reverse(), cost.minutes, cost.transfers);
-      }
+      if (!destinations.has(node.station.code)) destinations.set(node.station.code, best);
       settled[best] = 1;
       for (const edge of node.edges) {
         const id = edge.to.id;
         if (settled[id]) continue;
         const next = {
           minutes: cost.minutes + edge.minutes,
-          transfers: cost.transfers + Number(edge.type === "transfer")
+          transfers: cost.transfers + Number(edge.type === "transfer"),
+          riding: cost.riding || edge.type === "ride",
+          walking: cost.walking + (edge.walking ?? 0)
         };
         if (!costs[id] || isBetter(next, costs[id], criterion)) {
           costs[id] = next;
@@ -200,11 +201,33 @@
         }
       }
     }
-    return null;
+    const tree = { costs, parents, destinations };
+    routeTrees.set(key, tree);
+    return tree;
+  }
+
+  function estimateRoute(from, to, criterion = "fastest") {
+    if (!nodesByStation.has(from) || !nodesByStation.has(to)) return null;
+    if (from === to) return { minutes: 0, transfers: 0 };
+    const { costs, destinations } = routesFrom(from, criterion);
+    const cost = costs[destinations.get(to)];
+    return cost ? { minutes: cost.riding ? cost.minutes : cost.walking, transfers: cost.transfers } : null;
+  }
+
+  function findRoute(from, to, { criterion = "fastest" } = {}) {
+    const cost = estimateRoute(from, to, criterion);
+    if (!cost) return null;
+    if (from === to) return summarize(from, to, [], 0, 0);
+    const { parents, destinations } = routesFrom(from, criterion);
+    const path = [];
+    for (let id = destinations.get(to); parents[id]; id = parents[id].node.id) {
+      path.push(parents[id]);
+    }
+    return summarize(from, to, path.reverse(), cost.minutes, cost.transfers);
   }
 
   window.BangkokRail = {
     lines, runs, stations, stationByCode, walkLinks,
-    distanceMeters, nearestStation, searchStations, findRoute
+    distanceMeters, nearestStation, searchStations, findRoute, estimateRoute
   };
 })();

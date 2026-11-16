@@ -4,12 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f6f6f0">
-  <meta name="description" content="Карта метро и городских поездов Бангкока с поиском станций и построением маршрутов.">
-  <title>Bangkok Rail — метро Бангкока</title>
+  <meta name="description" content="Карта метро Бангкока и планировщик поездок с остановками в интересных местах.">
+  <title>Bangkok Rail — метро и места Бангкока</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="data.js"></script>
   <script defer src="map-data.js"></script>
   <script defer src="routing.js"></script>
+  <script defer src="places-data.js"></script>
+  <script defer src="places.js"></script>
+  <script defer src="outing.js"></script>
   <script defer src="map.js"></script>
   <script defer src="app.js"></script>
 </head>
@@ -30,6 +33,9 @@
     <symbol id="i-plane" viewBox="0 0 24 24"><path d="m3 11 7 2 3 7 1.7-1.3-.6-6.4L20 6.5a1.76 1.76 0 0 0-2.5-2.5l-5.8 5.9-6.4-.6L3 11Z"/></symbol>
     <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M3 7h16m-4-4 4 4-4 4m6 6H5m4-4-4 4 4 4"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H16a3 3 0 0 1 0 6H8a3 3 0 1 0 0 6h7.5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 4.5 4.5"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 16 12-12 4 4L8 20H4v-4Zm10-10 4 4"/></symbol>
   </svg>
 
   <header class="topbar">
@@ -49,10 +55,14 @@
   </header>
 
   <main class="workspace">
-    <section id="planner" class="planner" aria-labelledby="planner-title">
-      <div class="planner-inner">
+    <section id="planner" class="planner" aria-label="Планировщик поездки">
+      <nav class="planner-nav" aria-label="Раздел карты">
+        <button id="route-tab" type="button" aria-pressed="true" aria-controls="route-panel"><svg class="icon"><use href="#i-route"/></svg> Маршрут</button>
+        <button id="places-tab" type="button" aria-pressed="false" aria-controls="places-panel"><svg class="icon"><use href="#i-pin"/></svg> Места</button>
+      </nav>
+      <div id="route-panel" class="planner-inner">
         <h1 id="planner-title">Куда поедем?</h1>
-        <p class="intro">Найдите станцию по названию или выберите её на карте.</p>
+        <p class="intro">Выберите станции или места.</p>
 
         <form id="route-form" novalidate>
           <div class="route-fields">
@@ -61,8 +71,8 @@
               <div class="field-content">
                 <label for="from">Откуда</label>
                 <div class="input-row">
-                  <input id="from" type="text" placeholder="Станция отправления" role="combobox" aria-expanded="false" aria-controls="from-options" aria-autocomplete="list" autocomplete="off" autocapitalize="none" spellcheck="false">
-                  <button class="field-clear button-icon" type="button" aria-label="Очистить станцию отправления" hidden><svg class="icon"><use href="#i-clear"/></svg></button>
+                  <input id="from" type="text" placeholder="Станция или место" role="combobox" aria-expanded="false" aria-controls="from-options" aria-autocomplete="list" autocomplete="off" autocapitalize="none" spellcheck="false">
+                  <button class="field-clear button-icon" type="button" aria-label="Очистить начало маршрута" hidden><svg class="icon"><use href="#i-clear"/></svg></button>
                 </div>
               </div>
               <ul id="from-options" class="options" role="listbox" hidden></ul>
@@ -72,16 +82,36 @@
               <div class="field-content">
                 <label for="to">Куда</label>
                 <div class="input-row">
-                  <input id="to" type="text" placeholder="Станция назначения" role="combobox" aria-expanded="false" aria-controls="to-options" aria-autocomplete="list" autocomplete="off" autocapitalize="none" spellcheck="false">
-                  <button class="field-clear button-icon" type="button" aria-label="Очистить станцию назначения" hidden><svg class="icon"><use href="#i-clear"/></svg></button>
+                  <input id="to" type="text" placeholder="Станция или место" role="combobox" aria-expanded="false" aria-controls="to-options" aria-autocomplete="list" autocomplete="off" autocapitalize="none" spellcheck="false">
+                  <button class="field-clear button-icon" type="button" aria-label="Очистить конец маршрута" hidden><svg class="icon"><use href="#i-clear"/></svg></button>
                 </div>
               </div>
               <ul id="to-options" class="options" role="listbox" hidden></ul>
             </div>
-            <button class="swap button-icon" id="swap" type="button" aria-label="Поменять станции местами" title="Поменять станции местами"><svg class="icon"><use href="#i-swap"/></svg></button>
+            <button class="swap button-icon" id="swap" type="button" aria-label="Поменять начало и конец" title="Поменять начало и конец"><svg class="icon"><use href="#i-swap"/></svg></button>
           </div>
 
           <div class="location-hint" id="location-hint" hidden></div>
+          <details id="via-settings" class="via-settings">
+            <summary>
+              <svg class="icon"><use href="#i-pin"/></svg><strong>Места по пути</strong>
+              <span id="via-summary"></span><svg class="icon disclosure-arrow"><use href="#i-chevron"/></svg>
+            </summary>
+            <div class="via-body">
+              <div id="via-tags" class="tag-list" role="group" aria-label="Что хочется посетить"></div>
+              <div id="pinned-places" class="pinned-places" hidden></div>
+              <label class="via-limit" for="via-limit"><span>Доп. время<small>С учётом посещений</small></span>
+                <select id="via-limit">
+                  <option value="30">30 мин</option>
+                  <option value="60" selected>1 час</option>
+                  <option value="90">1 ч 30 мин</option>
+                  <option value="120">2 часа</option>
+                  <option value="180">3 часа</option>
+                  <option value="240">4 часа</option>
+                </select>
+              </label>
+            </div>
+          </details>
           <p class="form-error" id="form-error" role="status" hidden></p>
           <button class="build-button" type="submit"><span>Построить маршрут</span><svg class="icon"><use href="#i-arrow"/></svg></button>
         </form>
@@ -102,6 +132,16 @@
 
         <section id="itinerary" class="itinerary" aria-label="Подробности маршрута" hidden></section>
       </div>
+      <section id="places-panel" class="planner-inner catalog" aria-label="Каталог мест" hidden>
+        <label class="catalog-search">
+          <svg class="icon"><use href="#i-search"/></svg>
+          <input id="place-search" type="search" placeholder="Найти место" aria-label="Найти место" autocomplete="off">
+        </label>
+        <div id="catalog-tags" class="tag-list" role="group" aria-label="Категории мест"></div>
+        <p id="catalog-count" class="catalog-count" role="status"></p>
+        <ul id="catalog-list" class="catalog-list"></ul>
+        <button id="catalog-more" class="catalog-more" type="button" hidden>Показать ещё</button>
+      </section>
       <div id="network-info" class="network-info">
         <div class="network-lines" aria-hidden="true"></div>
         <span>Метро и городские поезда</span>
@@ -110,7 +150,7 @@
     </section>
 
     <section id="map" class="map" aria-label="Карта метро и улиц Бангкока">
-      <canvas id="map-canvas" tabindex="0" aria-label="Карта. Стрелки перемещают карту, плюс и минус меняют масштаб. Для поиска станции используйте поля маршрута."></canvas>
+      <canvas id="map-canvas" tabindex="0" aria-label="Карта. Стрелки перемещают карту, плюс и минус меняют масштаб. Поиск доступен в полях маршрута и во вкладке «Места»."></canvas>
 
       <div class="map-toolbar">
         <div class="layers-wrap">
@@ -143,15 +183,38 @@
   </main>
 
   <div id="notification" class="notification" role="status" hidden></div>
+  <dialog id="place-editor" class="about place-editor" aria-labelledby="edit-title">
+    <button id="edit-close" class="button-icon dialog-close" type="button" aria-label="Закрыть"><svg class="icon"><use href="#i-clear"/></svg></button>
+    <h2 id="edit-title">Мои отметки</h2>
+    <p id="edit-place-name" class="edit-place-name"></p>
+    <a id="edit-map-link" class="text-button" href="#" target="_blank" rel="noopener" hidden>Открыть в Google Maps</a>
+    <form id="edit-place-form">
+      <fieldset>
+        <legend>Оценка</legend>
+        <div id="edit-stars" class="edit-stars"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Цвет метки</legend>
+        <div id="edit-colors" class="edit-colors"></div>
+      </fieldset>
+      <label class="edit-note" for="edit-note">Заметка</label>
+      <textarea id="edit-note" maxlength="1200" rows="3" placeholder="Что запомнить об этом месте?"></textarea>
+      <p id="edit-error" class="form-error" role="status" hidden></p>
+      <button class="build-button" type="submit"><span>Сохранить</span><svg class="icon"><use href="#i-arrow"/></svg></button>
+    </form>
+  </dialog>
   <dialog id="about" class="about">
     <button id="about-close" class="button-icon dialog-close" type="button" aria-label="Закрыть"><svg class="icon"><use href="#i-clear"/></svg></button>
     <h2>О карте</h2>
     <p>Станции и геометрия линий адаптированы из открытых данных OTP Namtang от 15 ноября 2026 года. Подложка улиц основана на OpenStreetMap.</p>
-    <p>Время поездки и переходов рассчитано приблизительно. Для определения позиции разрешите геолокацию в Safari. Координаты обрабатываются на устройстве.</p>
+    <p>Оценка маршрута учитывает поездки, пешие переходы и посещения. Пунктир показывает приблизительные пешие участки. Для определения позиции разрешите геолокацию в Safari. Координаты обрабатываются на устройстве.</p>
     <ul class="source-links">
       <li><a href="https://namtang-api.otp.go.th/opendata" target="_blank" rel="noopener">OTP Namtang · CC BY</a></li>
       <li><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap · ODbL</a></li>
       <li><a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap / OpenMapTiles</a></li>
+      <li><a href="https://maps26.bkkartbiennale.com/" target="_blank" rel="noopener">Карта Bangkok Art Biennale 2026</a></li>
+      <li><a href="https://www.google.com/maps/d/viewer?mid=1UY6APPaXhQitEGID-X1GZQ9h78irVEs" target="_blank" rel="noopener">Hidden Gems in Bangkok</a></li>
+      <li><a href="https://ru.phuket101.net/best-rooftop-bars-in-bangkok/" target="_blank" rel="noopener">Гид по крышам Phuket 101</a></li>
     </ul>
   </dialog>
 </body>

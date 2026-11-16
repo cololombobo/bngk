@@ -2,6 +2,8 @@
 
 (function loadMap() {
   const { stations, runs, walkLinks } = window.BangkokRail;
+  const { tagById } = window.BangkokPlaces;
+  const { pointId } = window.BangkokOutings;
   const baseTiles = window.BangkokTiles;
   const tileIndex = new Map(Object.entries(window.BangkokTileIndex).map(([zoom, keys]) => [Number(zoom), new Set(keys)]));
   const tileExtent = 1024;
@@ -84,6 +86,9 @@
       this.frame = null;
       this.pickedMarkers = [];
       this.stationLabels = [];
+      this.pickedPlaces = [];
+      this.placeMarkers = [];
+      this.endpointPoints = [];
       this.route = null;
       this.endpoints = {};
       this.resize();
@@ -121,6 +126,10 @@
 
     stationScreen(station) {
       return this.screen(stationPoints.get(station.code));
+    }
+
+    pointScreen(point) {
+      return point.code ? this.stationScreen(point) : this.screen(project(point.lat, point.lng));
     }
 
     fromScreen(x, y) {
@@ -379,9 +388,9 @@
       ctx.stroke();
     }
 
-    transfer(from, to, emphasized) {
-      const a = this.stationScreen(from);
-      const b = this.stationScreen(to);
+    connector(from, to, emphasized) {
+      const a = this.pointScreen(from);
+      const b = this.pointScreen(to);
       if (Math.hypot(a.x - b.x, a.y - b.y) < 5) return;
       const ctx = this.context;
       ctx.beginPath();
@@ -410,15 +419,15 @@
         this.track(run.segments, this.route ? mutedRail : run.line.color, backgroundWidth);
       }
       for (const { from, to } of walkLinks) {
-        if (this.stationVisible(from) && this.stationVisible(to)) this.transfer(from, to, false);
+        if (this.stationVisible(from) && this.stationVisible(to)) this.connector(from, to, false);
       }
       ctx.globalAlpha = 1;
       for (const leg of this.route?.legs ?? []) {
         if (leg.type === "ride") {
           this.track(leg.segments, "#fffefa", width + 5);
           this.track(leg.segments, leg.line.color, width + 2.6);
-        } else {
-          this.transfer(leg.from, leg.to, true);
+        } else if (leg.type === "walk" || leg.type === "transfer") {
+          this.connector(leg.from, leg.to, true);
         }
       }
     }
@@ -514,6 +523,99 @@
       }
     }
 
+    drawPlaces() {
+      const ctx = this.context;
+      this.pickedPlaces = [];
+      const emphasis = new Map();
+      for (const [index, place] of (this.route?.visits ?? []).entries()) {
+        emphasis.set(place.id, { place, label: String(index + 1) });
+      }
+      for (const [index, place] of this.endpointPoints.entries()) {
+        if (!place || place.code || place.id === "here") continue;
+        emphasis.set(place.id, { place, label: index === 0 ? "A" : "B" });
+      }
+      if (this.activePlace && !emphasis.has(this.activePlace.id)) {
+        emphasis.set(this.activePlace.id, { place: this.activePlace, label: "" });
+      }
+
+      const cells = new Map();
+      const cellSize = this.zoom >= 15 ? 18 : this.zoom >= 13 ? 33 : 51;
+      const inside = ({ x, y }) => x >= -16 && x <= this.width + 16 && y >= -16 && y <= this.height + 16;
+      for (const place of this.placeMarkers) {
+        if (emphasis.has(place.id)) continue;
+        const position = this.pointScreen(place);
+        if (!inside(position)) continue;
+        const key = `${Math.floor(position.x / cellSize)},${Math.floor(position.y / cellSize)}`;
+        if (!cells.has(key)) cells.set(key, { x: 0, y: 0, members: [] });
+        const cell = cells.get(key);
+        cell.x += position.x;
+        cell.y += position.y;
+        cell.members.push(place);
+      }
+      for (const cell of cells.values()) {
+        const count = cell.members.length;
+        const x = cell.x / count;
+        const y = cell.y / count;
+        if (count === 1) {
+          const [place] = cell.members;
+          const color = place.color || tagById.get(place.biennale ? "biennale" : place.category).color;
+          this.circle(x, y, place.personal ? 6.5 : 5.2, color, "#fffef8", 1.8);
+          this.pickedPlaces.push({ x, y, result: place, radius: 10 });
+        } else {
+          const radius = count >= 10 ? 13 : 11;
+          const color = cell.members.every(place => place.biennale) ? tagById.get("biennale").color : "#3e6854";
+          this.circle(x, y, radius, color, "#fffefa", 2.2);
+          ctx.font = `750 10px ${typeface}`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#fff";
+          ctx.fillText(String(count), x, y + 0.5);
+          this.pickedPlaces.push({ x, y, result: { cluster: cell.members }, radius });
+        }
+      }
+
+      const occupied = this.endpointPoints.filter(Boolean).map(point => this.pointScreen(point));
+      for (const { place, label } of emphasis.values()) {
+        const anchor = this.pointScreen(place);
+        if (!inside(anchor)) continue;
+        let position = anchor;
+        if (/^\d+$/.test(label) && occupied.some(other => Math.hypot(anchor.x - other.x, anchor.y - other.y) < 23)) {
+          position = [[0, -25], [-25, 0], [25, 0], [0, 25], [20, -20], [-20, 20]]
+            .map(([dx, dy]) => ({ x: anchor.x + dx, y: anchor.y + dy }))
+            .find(candidate => inside(candidate) && occupied.every(other =>
+              Math.hypot(candidate.x - other.x, candidate.y - other.y) >= 23)) ?? anchor;
+        }
+        occupied.push(position);
+        const { x, y } = position;
+        const color = place.color || (label === "A" ? "#28463b" : label === "B" ? "#825b20" :
+          tagById.get(place.biennale ? "biennale" : place.category).color);
+        const radius = label ? 11 : 8;
+        if (position !== anchor) {
+          ctx.beginPath();
+          ctx.moveTo(anchor.x, anchor.y);
+          ctx.lineTo(x, y);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.25;
+          ctx.stroke();
+        }
+        this.circle(x, y, radius, color, "#fffefa", 2.8);
+        ctx.textBaseline = "middle";
+        if (label) {
+          ctx.font = `800 11px ${typeface}`;
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#fff";
+          ctx.fillText(label, x, y + 0.3);
+        }
+        ctx.font = `700 11px ${typeface}`;
+        ctx.textAlign = "left";
+        const width = ctx.measureText(place.name).width;
+        if (this.reserveLabel(x + radius + 3, y - 7, width + 6, 14)) {
+          this.text(place.name, x + radius + 5, y, "#34483e", 3.6);
+        }
+        this.pickedPlaces.push({ x, y, result: place, radius: radius + 3 });
+      }
+    }
+
     drawLocation() {
       if (!this.location) return;
       const { lat, lng, accuracy } = this.location;
@@ -538,6 +640,7 @@
       ];
       this.routeLines();
       this.drawStations();
+      this.drawPlaces();
       this.drawMapLabels(tiles);
       this.drawLocation();
       const latitude = Math.atan(Math.sinh(Math.PI * (1 - 2 * this.center.y)));
@@ -552,10 +655,17 @@
 
     hit(point, radius) {
       let closest = null;
-      let best = radius;
+      let best = Infinity;
+      for (const place of this.pickedPlaces) {
+        const delta = Math.hypot(place.x - point.x, place.y - point.y);
+        if (delta <= Math.max(place.radius, radius) && delta <= best) {
+          best = delta;
+          closest = place.result;
+        }
+      }
       for (const dot of this.pickedMarkers) {
         const delta = Math.hypot(dot.x - point.x, dot.y - point.y);
-        if (delta <= best) {
+        if (delta <= radius && delta < best) {
           best = delta;
           closest = dot.station;
         }
