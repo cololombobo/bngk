@@ -10,6 +10,7 @@
   const radians = Math.PI / 180;
   const worldWidth = 40075016.686;
   const typeface = 'Inter, system-ui, -apple-system, sans-serif';
+  const mutedRail = "#94a199";
   const downtown = new Set(["BL29", "BL31", "S6", "CEN", "E4", "N2", "A6", "N8", "G2", "BL20", "BL25", "E9"]);
   const keyLabels = new Map([
     ["A1", "Suvarnabhumi"], ["RN01", "Krung Thep Aphiwat"], ["PK01", "Nonthaburi Civic Ctr."],
@@ -402,9 +403,12 @@
       ctx.lineJoin = "round";
       const width = this.zoom >= 14.5 ? 4.6 : this.zoom >= 11.35 ? 3.75 : 2.85;
       const visibleRuns = runs.filter(run => this.visibleLines.has(run.line.id));
-      ctx.globalAlpha = this.route ? 0.33 : 0.97;
-      for (const run of visibleRuns) this.track(run.segments, "#fffffc", width + 2.4);
-      for (const run of visibleRuns) this.track(run.segments, run.line.color, width);
+      const backgroundWidth = this.route ? width * 0.65 : width;
+      ctx.globalAlpha = this.route ? 0.54 : 0.97;
+      for (const run of visibleRuns) this.track(run.segments, "#fffffc", backgroundWidth + 2.4);
+      for (const run of visibleRuns) {
+        this.track(run.segments, this.route ? mutedRail : run.line.color, backgroundWidth);
+      }
       for (const { from, to } of walkLinks) {
         if (this.stationVisible(from) && this.stationVisible(to)) this.transfer(from, to, false);
       }
@@ -457,11 +461,12 @@
       candidates.sort((a, b) => a.weight - b.weight);
       for (const dot of candidates) {
         const { station, x, y, selected, inRoute, endpoint, from } = dot;
-        const colors = station.lines.filter(line => this.visibleLines.has(line.id)).map(line => line.color);
-        const color = colors[0] ?? station.lines[0].color;
         const muted = this.route && !inRoute && !endpoint && !selected;
+        const visibleLine = station.lines.find(line => this.visibleLines.has(line.id));
+        const color = muted ? mutedRail : (visibleLine ?? station.lines[0]).color;
+        const outline = station.interchange && !muted ? "#385347" : color;
         const radius = selected ? 6 : station.interchange ? 4.4 : this.zoom >= 14 ? 3.9 : this.zoom >= 11.4 ? 2.7 : 2.25;
-        ctx.globalAlpha = muted ? 0.46 : 1;
+        ctx.globalAlpha = muted ? 0.58 : 1;
         if (endpoint) {
           this.circle(x, y, 11, from ? "#28463b" : "#ffd45c", "#fffefa", 2.8);
           ctx.font = `800 11px ${typeface}`;
@@ -471,7 +476,7 @@
           ctx.fillText(from ? "A" : "B", x, y + 0.3);
         } else {
           if (selected || station.interchange) this.circle(x, y, radius + 1.6, "#fffffa");
-          this.circle(x, y, radius, "#fffef9", station.interchange ? "#385347" : color, station.interchange ? 1.7 : 1.45);
+          this.circle(x, y, radius, "#fffef9", outline, station.interchange ? 1.7 : 1.45);
           if (station.interchange) this.circle(x, y, 1.35, color);
         }
         ctx.globalAlpha = 1;
@@ -492,6 +497,7 @@
         ctx.textAlign = "left";
         const w = ctx.measureText(name).width;
         const gap = endpoint ? 16 : 9;
+        const textColor = this.route && weight < 7 ? "#78847b" : weight >= 4 ? "#263d33" : "#3e5046";
         const layouts = [
           [x + gap, y],
           [x - w - gap, y],
@@ -500,7 +506,7 @@
         ];
         for (const [left, baseline] of layouts) {
           if (!this.reserveLabel(left - 3, baseline - 7, w + 6, 14)) continue;
-          this.text(name, left, baseline, weight >= 4 ? "#263d33" : "#3e5046", endpoint ? 4.5 : 3.6);
+          this.text(name, left, baseline, textColor, endpoint ? 4.5 : 3.6);
           this.stationLabels.push({ dot, x: left - 3, y: baseline - 8, w: w + 6, h: 16 });
           drawnNames.add(name);
           break;

@@ -15,7 +15,6 @@
   const form = byId("route-form");
   const itinerary = byId("itinerary");
   const examples = byId("examples");
-  const planner = byId("planner");
   const stationCard = byId("station-card");
   const layers = byId("layers-panel");
   const layersToggle = byId("layers-toggle");
@@ -120,10 +119,12 @@
     field.clear.hidden = !field.input.value;
     hideOptions(field);
     setError();
-    clearRoute();
-    if (station && focusMap) {
+    resetItinerary();
+    if (route) {
+      fitRoute();
+    } else if (station) {
       closeStation();
-      map.focus(station, 14.65);
+      if (focusMap) map.focus(station, 14.65);
     }
   }
 
@@ -136,7 +137,7 @@
       endpoints[field.key] = null;
       field.clear.hidden = !field.input.value;
       setError();
-      clearRoute();
+      resetItinerary();
       renderOptions(field);
     });
     field.input.addEventListener("keydown", event => {
@@ -219,9 +220,7 @@
     else if (action === "from" || action === "to") {
       const station = selectedStation;
       setEndpoint(action, station.code);
-      closeStation();
       notify(`${action === "from" ? "Откуда" : "Куда"} — ${station.name}`);
-      if (endpoints.from && endpoints.to) scrollToSection(planner);
     }
   });
 
@@ -240,12 +239,17 @@
     stationCard.style.top = `${Math.min(Math.max(62, top), map.height - height - 25)}px`;
   }
 
-  function clearRoute() {
-    route = null;
+  function refreshRoute() {
+    const { from, to } = endpoints;
+    route = from && to && from !== to ? findRoute(from, to, { criterion }) : null;
+    updateMap();
+  }
+
+  function resetItinerary() {
     itinerary.hidden = true;
     itinerary.replaceChildren();
     examples.hidden = false;
-    updateMap();
+    refreshRoute();
   }
 
   function resolveEndpoint(field) {
@@ -282,7 +286,7 @@
       setError("Выберите разные станции отправления и назначения.", "to");
       return false;
     }
-    route = findRoute(endpoints.from, endpoints.to, { criterion });
+    refreshRoute();
     if (!route) {
       setError("Для этой пары станций маршрут не найден.");
       return false;
@@ -293,8 +297,6 @@
     renderItinerary();
     examples.hidden = true;
     itinerary.hidden = false;
-    closeStation();
-    updateMap();
     fitRoute();
     if (scroll) requestAnimationFrame(() => scrollToSection(itinerary));
     return true;
@@ -314,8 +316,12 @@
       hideOptions(field);
     }
     setError();
-    if (route) buildRoute({ scroll: false });
-    else updateMap();
+    if (itinerary.hidden) {
+      refreshRoute();
+      fitRoute();
+    } else {
+      buildRoute({ scroll: false });
+    }
   });
 
   examples.addEventListener("click", event => {
