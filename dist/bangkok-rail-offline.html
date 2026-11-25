@@ -58,6 +58,22 @@ button, a, input, canvas { outline-offset: 4px; }
 .location-button .icon { width: 18px; height: 18px; }
 .about-button { width: 42px; color: #596d5d; }
 .view-toggle { display: none; }
+.guide-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #c6dacf;
+  border-radius: 11px;
+  background: #e4efe8;
+  color: var(--pine-dark);
+  font-size: .875rem;
+  font-weight: 750;
+}
+.guide-button .icon { width: 17px; height: 17px; }
+.guide-button:hover { background: #d9e9df; }
 
 .workspace {
   margin: 0 max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
@@ -238,6 +254,155 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
 .source-links li + li { margin-top: 5px; }
 .dialog-close { position: absolute; top: 9px; right: 9px; color: var(--pine); }
 
+.airport-guide {
+  width: min(720px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid #d7e3da;
+  border-radius: 20px;
+  color: var(--ink);
+  box-shadow: 0 22px 64px #16282036;
+}
+.airport-guide[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.airport-guide::backdrop { background: #152c2566; }
+html:has(.airport-guide[open]) { overflow: hidden; }
+
+.guide-header {
+  --guide-inset: 24px;
+  position: relative;
+  padding: 20px var(--guide-inset) 14px;
+  background: #f1f6f1;
+  border-bottom: 1px solid #dfe8de;
+}
+.guide-header h2 {
+  margin: 0 42px 4px 0;
+  color: var(--pine-dark);
+  font-size: clamp(1.5rem, 3.2vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -.04em;
+}
+.guide-header h2 span { white-space: nowrap; }
+.guide-header .dialog-close { top: 12px; right: var(--guide-inset); width: 44px; height: 44px; }
+.guide-destination { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--pine); }
+.guide-station-code {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #dbeadf;
+  color: var(--pine-dark);
+  font-size: .875rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.guide-station {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pine);
+  font-size: .875rem;
+  font-weight: 720;
+}
+.guide-station:hover { background: #e3eee5; }
+.guide-station .icon { width: 17px; height: 17px; }
+.guide-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.guide-tabs button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  align-content: center;
+  gap: 3px 7px;
+  min-height: 50px;
+  padding: 6px 7px;
+  border: 1px solid #cfddd1;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--pine-dark);
+  font-size: .875rem;
+}
+.guide-tabs button:hover { border-color: #86a295; }
+.guide-tabs button[aria-selected="true"] { background: var(--pine); border-color: var(--pine); color: white; }
+.guide-tabs strong { font-weight: 780; }
+
+.guide-body {
+  padding: 16px 24px 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #bccfc0 transparent;
+}
+.guide-routes { display: grid; gap: 9px; border-radius: 11px; }
+.guide-route { background: #fff; border: 1px solid #dce6dd; border-radius: 12px; }
+.guide-route[open] { border-color: #b5cdbb; }
+.guide-route summary {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  cursor: pointer;
+  list-style: none;
+}
+.guide-route summary::-webkit-details-marker { display: none; }
+.guide-route summary:hover { background: #f6f9f6; }
+.guide-route summary:focus-visible { outline-offset: -2px; }
+.guide-route[open] summary { border-radius: 11px 11px 0 0; background: #f2f7f2; }
+.guide-mode { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; }
+.guide-mode-rail { background: #e3edfa; color: #2a537f; }
+.guide-mode-bus { background: #f9eed2; color: #79560b; }
+.guide-mode-car { background: #e9e8f6; color: #574282; }
+.guide-route-title { display: grid; gap: 3px; color: var(--pine-dark); line-height: 1.25; }
+.guide-route-title strong { font-size: 1rem; font-weight: 760; }
+.guide-route-title > span { color: var(--muted); font-size: .875rem; }
+.guide-chevron { width: 15px; height: 15px; color: var(--pine); }
+.guide-route[open] .guide-chevron { transform: rotate(90deg); }
+.guide-facts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 5px; }
+.guide-facts span {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: #edf3ee;
+  color: #3c5649;
+  font-size: .8125rem;
+  font-weight: 660;
+  line-height: 1.2;
+}
+.guide-detail { padding: 13px 14px 12px; border-top: 1px solid #e1eae1; font-size: 1rem; line-height: 1.5; }
+.guide-steps { padding-inline-start: 22px; margin: 0; }
+.guide-steps li { padding-inline-start: 3px; }
+.guide-steps li + li { margin-top: 8px; }
+.guide-steps li::marker { color: var(--pine); font-weight: 750; }
+.guide-detail p { margin: 12px 0; }
+.guide-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 13px; }
+.guide-actions a, .guide-footer a { color: var(--pine); text-underline-offset: 3px; font-size: .875rem; font-weight: 650; }
+.guide-actions a, .guide-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.guide-actions .guide-action {
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid #cdddcf;
+  background: #ebf3ec;
+  color: var(--pine-dark);
+  font-size: .875rem;
+  font-weight: 740;
+  text-decoration: none;
+}
+.guide-action:hover { background: #dfede2; }
+.guide-footer { margin-top: 15px; color: var(--muted); font-size: .875rem; line-height: 1.45; }
+.guide-footer p { margin: 0; }
+.guide-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+
 .planner-nav { display: flex; align-items: center; gap: 3px; margin: 17px 24px 0; padding: 4px; background: #f1f4ee; border-radius: 12px; }
 .planner-nav button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 37px; flex: 1; border: 1px solid transparent; background: transparent; border-radius: 8px; color: #596c5e; font-size: 13px; font-weight: 710; }
 .planner-nav button[aria-pressed="true"] { background: #fff; color: var(--pine-dark); border-color: #dfe7db; box-shadow: 0 1px 3px #3049370b; }
@@ -392,12 +557,43 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
   .trip-stop button { min-height: 36px; }
   .station-actions button { min-height: 39px; }
 }
-@media (max-width: 510px) {
+@media (max-width: 650px) {
   .location-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .location-button { justify-content: center; }
+  .guide-button { padding-inline: 9px; }
+  .view-toggle { min-width: 68px; padding-inline: 7px; }
 }
-@media (max-width: 358px) {
+@media (max-width: 510px) {
+  .airport-guide {
+    width: 100%;
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    margin: auto 0 0;
+    border-radius: 17px 17px 0 0;
+    border-bottom: 0;
+  }
+  .guide-header {
+    --guide-inset: max(14px, env(safe-area-inset-right), env(safe-area-inset-left));
+    padding-top: 15px;
+    padding-bottom: 11px;
+  }
+  .guide-body {
+    padding: 11px max(13px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left));
+  }
+  .guide-route summary { padding: 10px; }
+  .guide-facts { grid-column: 1 / -1; }
+}
+@media (max-width: 470px) {
+  .brand-icon { display: none; }
+}
+@media (max-width: 400px) {
+  .brand-icon { display: grid; }
   .brand > span:last-child { display: none; }
+}
+@media (max-height: 390px) {
+  .guide-header { padding-block: 10px; }
+  .guide-header h2 { font-size: 1.25rem; }
+  .guide-tabs { margin-top: 2px; }
+  .guide-tabs button { min-height: 44px; }
 }
 @media (min-width: 781px) and (max-height: 680px) {
   .planner-inner { padding-top: 21px; padding-bottom: 18px; }
@@ -422,6 +618,8 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
     <symbol id="i-clear" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="i-plane" viewBox="0 0 24 24"><path d="m3 11 7 2 3 7 1.7-1.3-.6-6.4L20 6.5a1.76 1.76 0 0 0-2.5-2.5l-5.8 5.9-6.4-.6L3 11Z"/></symbol>
+    <symbol id="i-bus" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="15" rx="3"/><path d="M5 11h14M7 18.5v2m10-2v2M8.5 15h.01m6.99 0h.01"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="m5 10 1.6-4.5A2 2 0 0 1 8.5 4h7a2 2 0 0 1 1.9 1.5L19 10M5 17v2m14-2v2M8 13.5h.01m7.99 0h.01"/><rect x="3.5" y="10" width="17" height="7" rx="2"/></symbol>
     <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M3 7h16m-4-4 4 4-4 4m6 6H5m4-4-4 4 4 4"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></symbol>
     <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H16a3 3 0 0 1 0 6H8a3 3 0 1 0 0 6h7.5"/></symbol>
@@ -436,6 +634,9 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
     </a>
     <span class="city"><svg class="icon"><use href="#i-pin"/></svg> Бангкок, Таиланд</span>
     <div class="header-actions">
+      <button id="guide-open" class="guide-button" type="button" aria-haspopup="dialog" aria-controls="airport-guide">
+        <svg class="icon" aria-hidden="true"><use href="#i-plane"/></svg> Инфо
+      </button>
       <button id="locate" class="location-button" type="button">
         <svg class="icon"><use href="#i-locate"/></svg><span>Моё местоположение</span>
       </button>
@@ -522,7 +723,7 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
           </button>
         </section>
 
-        <section id="itinerary" class="itinerary" aria-label="Подробности маршрута" hidden></section>
+        <section id="itinerary" class="itinerary" aria-label="Подробности маршрута" tabindex="-1" hidden></section>
       </div>
       <section id="places-panel" class="planner-inner catalog" aria-label="Каталог мест" hidden>
         <label class="catalog-search">
@@ -579,6 +780,200 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
   </main>
 
   <div id="notification" class="notification" role="status" hidden></div>
+  <dialog id="airport-guide" class="airport-guide" aria-labelledby="guide-title">
+    <header class="guide-header">
+      <button class="button-icon dialog-close" id="guide-close" type="button" aria-label="Закрыть справочник" autofocus><svg class="icon" aria-hidden="true"><use href="#i-clear"/></svg></button>
+      <h2 id="guide-title">Из аэропорта до <span>Udom Suk</span></h2>
+      <div class="guide-destination">
+        <span class="guide-station-code">BTS E12</span><span lang="th">อุดมสุข</span>
+        <button class="guide-station" id="guide-station" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg> На карте</button>
+      </div>
+      <div class="guide-tabs" id="guide-tabs" role="tablist" aria-label="Аэропорт прилёта">
+        <button id="guide-bkk-tab" type="button" role="tab" aria-selected="true" aria-controls="guide-bkk">
+          <strong>BKK</strong><span>Suvarnabhumi</span>
+        </button>
+        <button id="guide-dmk-tab" type="button" role="tab" aria-selected="false" aria-controls="guide-dmk" tabindex="-1">
+          <strong>DMK</strong><span>Don Mueang</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="guide-body" id="guide-body">
+      <section id="guide-bkk" class="guide-routes" role="tabpanel" aria-labelledby="guide-bkk-tab" tabindex="0">
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-rail"><svg class="icon" aria-hidden="true"><use href="#i-train"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Airport Rail Link + BTS</strong>
+              <span>Через Phaya Thai</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 65–85 мин</span><span>≈ ฿110</span><span>1 пересадка</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Уровень B1 главного терминала.</strong> Идите по указателям Airport Rail Link. Купите билет до Phaya Thai за ฿45 и садитесь на City Line.</li>
+              <li><strong>Phaya Thai (A8 → N2).</strong> На конечной пройдите по указателям BTS Sukhumvit Line. Для BTS нужен отдельный билет.</li>
+              <li><strong>Udom Suk (E12).</strong> Садитесь на поезд в сторону Kheha или Samrong и выходите на Udom Suk.</li>
+            </ol>
+            <p>Airport Rail Link работает с 05:30 до 00:00. При позднем прилёте проверьте, успеваете ли на последний BTS с Phaya Thai.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="A1" data-guide-criterion="fewest-transfers">Построить на карте</button>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/airport-guide/detail/Transportation_BKK" target="_blank" rel="noopener">Airport Rail Link и посадка</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-bus"><svg class="icon" aria-hidden="true"><use href="#i-bus"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Маршрутка 552B + BTS</strong>
+              <span>Через On Nut</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 60–110 мин</span><span>฿30 + BTS</span><span>2 пересадки</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>До автостанции аэропорта.</strong> Сядьте на шаттл до Public Transportation Center. Ищите остановку на уровне 1 у Gate 3 или 7 либо на уровне 2 у Gate 3–4.</li>
+              <li><strong>552B до BTS On Nut.</strong> Маршрутка отправляется с автостанции. До конечной On Nut (E9) билет стоит ฿30.</li>
+              <li><strong>Три станции на BTS.</strong> Садитесь в сторону Kheha или Samrong. После Bang Chak и Punnawithi выходите на Udom Suk (E12).</li>
+            </ol>
+            <p>По данным аэропорта, 552B ходит с 05:00 до 22:00 примерно раз в час, в часы пик 06:30–08:00 и 16:00–18:30 примерно раз в 15 минут. На автостанции можно уточнить ближайший рейс по телефону <a href="tel:+6621329509">+66 2 132 9509</a>.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="E9">Участок BTS на карте</button>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/transportation/detail/939" target="_blank" rel="noopener">Расписание и остановки 552B</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-bus"><svg class="icon" aria-hidden="true"><use href="#i-bus"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Автобусы S7 (558) + 132</strong>
+              <span>Через Bang Na–Trat</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 60–110 мин</span><span>Два автобусных билета</span><span>2 пересадки</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>До Public Transportation Center.</strong> Доедьте на шаттле от главного терминала. Посадка на уровне 1 у Gate 3 или 7 либо на уровне 2 у Gate 3–4.</li>
+              <li><strong>S7 (558) в сторону Kheha Thonburi / Rama 2.</strong> Попросите высадить на Soi Bangna–Trat 28, вскоре после остановки напротив Central Bangna.</li>
+              <li><strong>3-14 (132) до BTS Udom Suk.</strong> На той же стороне дороги садитесь в автобус с конечной BTS Udom Suk. У станции можно выйти возле Exit 1.</li>
+            </ol>
+            <p>Билеты на S7 и 132 оплачиваются отдельно. Аэропорт указывает для 558 тариф до ฿36. Сверьте ближайшие отправления у перевозчика.</p>
+            <div class="guide-actions">
+              <a class="guide-action" href="https://information.thaismilebus.com/SchedulePlan/" target="_blank" rel="noopener">Расписание Thai Smile Bus</a>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/way-to-airport/detail/754" target="_blank" rel="noopener">Тарифы автобусов BKK</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-car"><svg class="icon" aria-hidden="true"><use href="#i-car"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Такси или Grab</strong>
+              <span>Напрямую до Udom Suk</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 25–50 мин</span><span>Счётчик + ฿50</span><span>Круглосуточно</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Такси по счётчику.</strong> Возьмите талон в зоне Public Taxi на уровне 1 между Gate 4 и 7. К цене по счётчику добавляется аэропортовый сбор ฿50. Платные дороги оплачиваются отдельно.</li>
+              <li><strong>Grab.</strong> Цена появится в приложении до заказа. Официальная посадка находится снаружи у Gate 4 на уровне 1.</li>
+            </ol>
+            <p>Покажите водителю «BTS Udom Suk» <span lang="th">สถานีบีทีเอสอุดมสุข</span> или адрес отеля, если едете сразу туда.</p>
+            <div class="guide-actions">
+              <a class="guide-action" href="https://www.google.com/maps/dir/?api=1&amp;origin=Suvarnabhumi+Airport&amp;destination=BTS+Udom+Suk+Station,+Bangkok&amp;travelmode=driving" target="_blank" rel="noopener">Дорога в Google Maps</a>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/transportation/detail/304" target="_blank" rel="noopener">Стоянка и тарифы такси</a>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="guide-dmk" class="guide-routes" role="tabpanel" aria-labelledby="guide-dmk-tab" tabindex="0" hidden>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-bus"><svg class="icon" aria-hidden="true"><use href="#i-bus"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Автобус A1 или A2 + BTS</strong>
+              <span>Через Mo Chit или Victory Monument</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 70–105 мин</span><span>≈ ฿95</span><span>1 пересадка</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Найдите остановку BMTA.</strong> Для T1 ориентир Level 1, Gate 6. В T2 аэропорт указывает Level 3, Gate 8. Следуйте указателям Airport Bus в своём терминале.</li>
+              <li><strong>A1 до BTS Mo Chit (N8).</strong> Выходите у Chatuchak Park по пути к автовокзалу Mo Chit 2. Если подъехал <strong>A2</strong>, езжайте до его конечной Victory Monument (N3).</li>
+              <li><strong>BTS до Udom Suk (E12).</strong> На обеих станциях садитесь в сторону Kheha или Samrong. Билет на BTS покупается отдельно.</li>
+            </ol>
+            <p>A1 и A2 стоят по ฿30. Аэропорт указывает для A1 часы 05:45–00:00, для A2 06:00–23:00, интервал около 15 минут.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="N8">BTS от Mo Chit</button>
+              <button class="guide-action" type="button" data-guide-from="N3">BTS от Victory Monument</button>
+              <a href="https://donmueang.airportthai.co.th/service/facility/detail/205" target="_blank" rel="noopener">Расписание A1 и A2</a>
+              <a href="https://donmueang.airportthai.co.th/service/airport-guide/detail/SpecialAssistanceFacilitiesandServices_DMK" target="_blank" rel="noopener">Посадка в T1 и T2</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-rail"><svg class="icon" aria-hidden="true"><use href="#i-train"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Поезда SRT + MRT + BTS</strong>
+              <span>Через Bang Sue и Asok</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 80–105 мин</span><span>฿33 + MRT и BTS</span><span>2 пересадки</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Don Mueang (RN08).</strong> Из аэропорта следуйте к станции по указателям SRT Red Line. Садитесь в сторону Krung Thep Aphiwat. Билет стоит ฿33.</li>
+              <li><strong>Krung Thep Aphiwat (RN01) → MRT Bang Sue (BL11).</strong> Пройдите по указателям MRT Blue Line и езжайте через Chatuchak Park до Sukhumvit (BL22).</li>
+              <li><strong>Sukhumvit (BL22) → BTS Asok (E4).</strong> На Asok садитесь в сторону Kheha или Samrong до Udom Suk (E12).</li>
+            </ol>
+            <p>Каждая из трёх линий оплачивается отдельно. Расписание последнего поезда стоит проверять на всех пересадках.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="RN08">Построить на карте</button>
+              <a href="https://www.srtet.co.th/en/fare-timetable?s=10" target="_blank" rel="noopener">Расписание SRT</a>
+              <a href="https://metro.bemplc.co.th/Fare-Calculation?lang=en" target="_blank" rel="noopener">Расписание и тарифы MRT</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-car"><svg class="icon" aria-hidden="true"><use href="#i-car"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Такси или Grab</strong>
+              <span>Напрямую до Udom Suk</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 45–90 мин</span><span>Счётчик + ฿50</span><span>Круглосуточно</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Такси по счётчику.</strong> На уровне 1 ищите Taxi-Meter у Gate 8 в T1 или рядом с Gate 15 в T2. К цене по счётчику добавляется аэропортовый сбор ฿50. Платные дороги оплачиваются отдельно.</li>
+              <li><strong>Grab.</strong> Стойка находится на уровне 1 у Gate 14 в T2. Приложение покажет цену и точку подачи.</li>
+            </ol>
+            <p>Покажите водителю «BTS Udom Suk» <span lang="th">สถานีบีทีเอสอุดมสุข</span> или адрес отеля, если едете сразу туда.</p>
+            <div class="guide-actions">
+              <a class="guide-action" href="https://www.google.com/maps/dir/?api=1&amp;origin=Don+Mueang+International+Airport&amp;destination=BTS+Udom+Suk+Station,+Bangkok&amp;travelmode=driving" target="_blank" rel="noopener">Дорога в Google Maps</a>
+              <a href="https://donmueang.airportthai.co.th/service/transportation/detail/211" target="_blank" rel="noopener">Стоянки и тарифы такси</a>
+              <a href="https://donmueang.airportthai.co.th/service/transportation/detail/835" target="_blank" rel="noopener">Стойка Grab</a>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <footer class="guide-footer">
+        <p>Время в пути ориентировочное и зависит от ожидания и трафика. Цены на общественный транспорт указаны на одного взрослого, расписания по времени Бангкока. Сверено <time datetime="2026-11-25">25 ноября 2026</time>.</p>
+        <a href="https://www.bts.co.th/eng/routemap.html" target="_blank" rel="noopener">Время и тарифы BTS</a>
+      </footer>
+    </div>
+  </dialog>
   <dialog id="place-editor" class="about place-editor" aria-labelledby="edit-title">
     <button id="edit-close" class="button-icon dialog-close" type="button" aria-label="Закрыть"><svg class="icon"><use href="#i-clear"/></svg></button>
     <h2 id="edit-title">Мои отметки</h2>
@@ -3261,6 +3656,7 @@ window.BangkokPlacesData = [
   const error = byId("form-error");
   const notification = byId("notification");
   const about = byId("about");
+  const guide = byId("airport-guide");
   const viaSettings = byId("via-settings");
   const viaTags = byId("via-tags");
   const viaLimit = byId("via-limit");
@@ -4062,7 +4458,7 @@ window.BangkokPlacesData = [
     for (const field of fields) if (!field.field.contains(event.target)) hideOptions(field);
   });
   document.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || about.open || editor.open) return;
+    if (event.key !== "Escape" || about.open || editor.open || guide.open) return;
     if (!layers.hidden) {
       toggleLayers(false);
       layersToggle.focus();
@@ -4138,6 +4534,69 @@ window.BangkokPlacesData = [
         ? "Разрешите доступ к геопозиции в настройках сайта Safari и попробуйте снова."
         : "Не удалось определить местоположение. Попробуйте ещё раз.");
     }, { enableHighAccuracy: true, timeout: 12000 });
+  });
+
+  const airportSelector = byId("guide-tabs");
+  const airportTabs = [...airportSelector.querySelectorAll('[role="tab"]')];
+  const guideBody = byId("guide-body");
+  const guideDestination = stationByCode.get("E12");
+
+  function selectAirport(tab) {
+    if (tab.getAttribute("aria-selected") === "true") return;
+    for (const airport of airportTabs) {
+      const active = airport === tab;
+      airport.setAttribute("aria-selected", String(active));
+      airport.tabIndex = active ? 0 : -1;
+      byId(airport.getAttribute("aria-controls")).hidden = !active;
+    }
+    guideBody.scrollTop = 0;
+  }
+
+  byId("guide-open").addEventListener("click", event => {
+    event.currentTarget.focus({ preventScroll: true });
+    guide.showModal();
+  });
+  byId("guide-close").addEventListener("click", () => guide.close());
+  airportSelector.addEventListener("click", event => {
+    const tab = event.target.closest('[role="tab"]');
+    if (tab) selectAirport(tab);
+  });
+  airportSelector.addEventListener("keydown", event => {
+    const current = airportTabs.indexOf(event.target);
+    const last = airportTabs.length - 1;
+    const shortcuts = {
+      ArrowLeft: (current + last) % airportTabs.length,
+      ArrowRight: (current + 1) % airportTabs.length,
+      Home: 0,
+      End: last
+    };
+    if (!Object.hasOwn(shortcuts, event.key)) return;
+    event.preventDefault();
+    const tab = airportTabs[shortcuts[event.key]];
+    selectAirport(tab);
+    tab.focus();
+  });
+
+  byId("guide-station").addEventListener("click", () => {
+    guide.close();
+    if (!railVisible) railToggle.click();
+    for (const line of guideDestination.lines) visibleLines.add(line.id);
+    updateLayers();
+    setMobileMapView(true);
+    map.focus(guideDestination, 15.4);
+    showPoint(guideDestination);
+    map.canvas.focus({ preventScroll: true });
+  });
+  guide.addEventListener("click", event => {
+    const button = event.target.closest("[data-guide-from]");
+    if (!button) return;
+    guide.close();
+    setMobileMapView(false);
+    if (catalogOpen) switchPanel(false);
+    criterion = button.dataset.guideCriterion ?? "fastest";
+    setEndpoint("from", button.dataset.guideFrom);
+    setEndpoint("to", guideDestination.code);
+    if (buildRoute()) itinerary.focus({ preventScroll: compact.matches });
   });
 
   byId("about-open").addEventListener("click", () => {

@@ -31,6 +31,8 @@
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
     <symbol id="i-clear" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="i-plane" viewBox="0 0 24 24"><path d="m3 11 7 2 3 7 1.7-1.3-.6-6.4L20 6.5a1.76 1.76 0 0 0-2.5-2.5l-5.8 5.9-6.4-.6L3 11Z"/></symbol>
+    <symbol id="i-bus" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="15" rx="3"/><path d="M5 11h14M7 18.5v2m10-2v2M8.5 15h.01m6.99 0h.01"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="m5 10 1.6-4.5A2 2 0 0 1 8.5 4h7a2 2 0 0 1 1.9 1.5L19 10M5 17v2m14-2v2M8 13.5h.01m7.99 0h.01"/><rect x="3.5" y="10" width="17" height="7" rx="2"/></symbol>
     <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M3 7h16m-4-4 4 4-4 4m6 6H5m4-4-4 4 4 4"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></symbol>
     <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H16a3 3 0 0 1 0 6H8a3 3 0 1 0 0 6h7.5"/></symbol>
@@ -45,6 +47,9 @@
     </a>
     <span class="city"><svg class="icon"><use href="#i-pin"/></svg> Бангкок, Таиланд</span>
     <div class="header-actions">
+      <button id="guide-open" class="guide-button" type="button" aria-haspopup="dialog" aria-controls="airport-guide">
+        <svg class="icon" aria-hidden="true"><use href="#i-plane"/></svg> Инфо
+      </button>
       <button id="locate" class="location-button" type="button">
         <svg class="icon"><use href="#i-locate"/></svg><span>Моё местоположение</span>
       </button>
@@ -131,7 +136,7 @@
           </button>
         </section>
 
-        <section id="itinerary" class="itinerary" aria-label="Подробности маршрута" hidden></section>
+        <section id="itinerary" class="itinerary" aria-label="Подробности маршрута" tabindex="-1" hidden></section>
       </div>
       <section id="places-panel" class="planner-inner catalog" aria-label="Каталог мест" hidden>
         <label class="catalog-search">
@@ -188,6 +193,200 @@
   </main>
 
   <div id="notification" class="notification" role="status" hidden></div>
+  <dialog id="airport-guide" class="airport-guide" aria-labelledby="guide-title">
+    <header class="guide-header">
+      <button class="button-icon dialog-close" id="guide-close" type="button" aria-label="Закрыть справочник" autofocus><svg class="icon" aria-hidden="true"><use href="#i-clear"/></svg></button>
+      <h2 id="guide-title">Из аэропорта до <span>Udom Suk</span></h2>
+      <div class="guide-destination">
+        <span class="guide-station-code">BTS E12</span><span lang="th">อุดมสุข</span>
+        <button class="guide-station" id="guide-station" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg> На карте</button>
+      </div>
+      <div class="guide-tabs" id="guide-tabs" role="tablist" aria-label="Аэропорт прилёта">
+        <button id="guide-bkk-tab" type="button" role="tab" aria-selected="true" aria-controls="guide-bkk">
+          <strong>BKK</strong><span>Suvarnabhumi</span>
+        </button>
+        <button id="guide-dmk-tab" type="button" role="tab" aria-selected="false" aria-controls="guide-dmk" tabindex="-1">
+          <strong>DMK</strong><span>Don Mueang</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="guide-body" id="guide-body">
+      <section id="guide-bkk" class="guide-routes" role="tabpanel" aria-labelledby="guide-bkk-tab" tabindex="0">
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-rail"><svg class="icon" aria-hidden="true"><use href="#i-train"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Airport Rail Link + BTS</strong>
+              <span>Через Phaya Thai</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 65–85 мин</span><span>≈ ฿110</span><span>1 пересадка</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Уровень B1 главного терминала.</strong> Идите по указателям Airport Rail Link. Купите билет до Phaya Thai за ฿45 и садитесь на City Line.</li>
+              <li><strong>Phaya Thai (A8 → N2).</strong> На конечной пройдите по указателям BTS Sukhumvit Line. Для BTS нужен отдельный билет.</li>
+              <li><strong>Udom Suk (E12).</strong> Садитесь на поезд в сторону Kheha или Samrong и выходите на Udom Suk.</li>
+            </ol>
+            <p>Airport Rail Link работает с 05:30 до 00:00. При позднем прилёте проверьте, успеваете ли на последний BTS с Phaya Thai.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="A1" data-guide-criterion="fewest-transfers">Построить на карте</button>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/airport-guide/detail/Transportation_BKK" target="_blank" rel="noopener">Airport Rail Link и посадка</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-bus"><svg class="icon" aria-hidden="true"><use href="#i-bus"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Маршрутка 552B + BTS</strong>
+              <span>Через On Nut</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 60–110 мин</span><span>฿30 + BTS</span><span>2 пересадки</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>До автостанции аэропорта.</strong> Сядьте на шаттл до Public Transportation Center. Ищите остановку на уровне 1 у Gate 3 или 7 либо на уровне 2 у Gate 3–4.</li>
+              <li><strong>552B до BTS On Nut.</strong> Маршрутка отправляется с автостанции. До конечной On Nut (E9) билет стоит ฿30.</li>
+              <li><strong>Три станции на BTS.</strong> Садитесь в сторону Kheha или Samrong. После Bang Chak и Punnawithi выходите на Udom Suk (E12).</li>
+            </ol>
+            <p>По данным аэропорта, 552B ходит с 05:00 до 22:00 примерно раз в час, в часы пик 06:30–08:00 и 16:00–18:30 примерно раз в 15 минут. На автостанции можно уточнить ближайший рейс по телефону <a href="tel:+6621329509">+66 2 132 9509</a>.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="E9">Участок BTS на карте</button>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/transportation/detail/939" target="_blank" rel="noopener">Расписание и остановки 552B</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-bus"><svg class="icon" aria-hidden="true"><use href="#i-bus"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Автобусы S7 (558) + 132</strong>
+              <span>Через Bang Na–Trat</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 60–110 мин</span><span>Два автобусных билета</span><span>2 пересадки</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>До Public Transportation Center.</strong> Доедьте на шаттле от главного терминала. Посадка на уровне 1 у Gate 3 или 7 либо на уровне 2 у Gate 3–4.</li>
+              <li><strong>S7 (558) в сторону Kheha Thonburi / Rama 2.</strong> Попросите высадить на Soi Bangna–Trat 28, вскоре после остановки напротив Central Bangna.</li>
+              <li><strong>3-14 (132) до BTS Udom Suk.</strong> На той же стороне дороги садитесь в автобус с конечной BTS Udom Suk. У станции можно выйти возле Exit 1.</li>
+            </ol>
+            <p>Билеты на S7 и 132 оплачиваются отдельно. Аэропорт указывает для 558 тариф до ฿36. Сверьте ближайшие отправления у перевозчика.</p>
+            <div class="guide-actions">
+              <a class="guide-action" href="https://information.thaismilebus.com/SchedulePlan/" target="_blank" rel="noopener">Расписание Thai Smile Bus</a>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/way-to-airport/detail/754" target="_blank" rel="noopener">Тарифы автобусов BKK</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-car"><svg class="icon" aria-hidden="true"><use href="#i-car"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Такси или Grab</strong>
+              <span>Напрямую до Udom Suk</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 25–50 мин</span><span>Счётчик + ฿50</span><span>Круглосуточно</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Такси по счётчику.</strong> Возьмите талон в зоне Public Taxi на уровне 1 между Gate 4 и 7. К цене по счётчику добавляется аэропортовый сбор ฿50. Платные дороги оплачиваются отдельно.</li>
+              <li><strong>Grab.</strong> Цена появится в приложении до заказа. Официальная посадка находится снаружи у Gate 4 на уровне 1.</li>
+            </ol>
+            <p>Покажите водителю «BTS Udom Suk» <span lang="th">สถานีบีทีเอสอุดมสุข</span> или адрес отеля, если едете сразу туда.</p>
+            <div class="guide-actions">
+              <a class="guide-action" href="https://www.google.com/maps/dir/?api=1&amp;origin=Suvarnabhumi+Airport&amp;destination=BTS+Udom+Suk+Station,+Bangkok&amp;travelmode=driving" target="_blank" rel="noopener">Дорога в Google Maps</a>
+              <a href="https://suvarnabhumi.airportthai.co.th/service/transportation/detail/304" target="_blank" rel="noopener">Стоянка и тарифы такси</a>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="guide-dmk" class="guide-routes" role="tabpanel" aria-labelledby="guide-dmk-tab" tabindex="0" hidden>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-bus"><svg class="icon" aria-hidden="true"><use href="#i-bus"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Автобус A1 или A2 + BTS</strong>
+              <span>Через Mo Chit или Victory Monument</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 70–105 мин</span><span>≈ ฿95</span><span>1 пересадка</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Найдите остановку BMTA.</strong> Для T1 ориентир Level 1, Gate 6. В T2 аэропорт указывает Level 3, Gate 8. Следуйте указателям Airport Bus в своём терминале.</li>
+              <li><strong>A1 до BTS Mo Chit (N8).</strong> Выходите у Chatuchak Park по пути к автовокзалу Mo Chit 2. Если подъехал <strong>A2</strong>, езжайте до его конечной Victory Monument (N3).</li>
+              <li><strong>BTS до Udom Suk (E12).</strong> На обеих станциях садитесь в сторону Kheha или Samrong. Билет на BTS покупается отдельно.</li>
+            </ol>
+            <p>A1 и A2 стоят по ฿30. Аэропорт указывает для A1 часы 05:45–00:00, для A2 06:00–23:00, интервал около 15 минут.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="N8">BTS от Mo Chit</button>
+              <button class="guide-action" type="button" data-guide-from="N3">BTS от Victory Monument</button>
+              <a href="https://donmueang.airportthai.co.th/service/facility/detail/205" target="_blank" rel="noopener">Расписание A1 и A2</a>
+              <a href="https://donmueang.airportthai.co.th/service/airport-guide/detail/SpecialAssistanceFacilitiesandServices_DMK" target="_blank" rel="noopener">Посадка в T1 и T2</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-rail"><svg class="icon" aria-hidden="true"><use href="#i-train"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Поезда SRT + MRT + BTS</strong>
+              <span>Через Bang Sue и Asok</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 80–105 мин</span><span>฿33 + MRT и BTS</span><span>2 пересадки</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Don Mueang (RN08).</strong> Из аэропорта следуйте к станции по указателям SRT Red Line. Садитесь в сторону Krung Thep Aphiwat. Билет стоит ฿33.</li>
+              <li><strong>Krung Thep Aphiwat (RN01) → MRT Bang Sue (BL11).</strong> Пройдите по указателям MRT Blue Line и езжайте через Chatuchak Park до Sukhumvit (BL22).</li>
+              <li><strong>Sukhumvit (BL22) → BTS Asok (E4).</strong> На Asok садитесь в сторону Kheha или Samrong до Udom Suk (E12).</li>
+            </ol>
+            <p>Каждая из трёх линий оплачивается отдельно. Расписание последнего поезда стоит проверять на всех пересадках.</p>
+            <div class="guide-actions">
+              <button class="guide-action" type="button" data-guide-from="RN08">Построить на карте</button>
+              <a href="https://www.srtet.co.th/en/fare-timetable?s=10" target="_blank" rel="noopener">Расписание SRT</a>
+              <a href="https://metro.bemplc.co.th/Fare-Calculation?lang=en" target="_blank" rel="noopener">Расписание и тарифы MRT</a>
+            </div>
+          </div>
+        </details>
+        <details class="guide-route">
+          <summary>
+            <span class="guide-mode guide-mode-car"><svg class="icon" aria-hidden="true"><use href="#i-car"/></svg></span>
+            <span class="guide-route-title">
+              <strong>Такси или Grab</strong>
+              <span>Напрямую до Udom Suk</span>
+            </span>
+            <svg class="icon guide-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            <span class="guide-facts"><span>≈ 45–90 мин</span><span>Счётчик + ฿50</span><span>Круглосуточно</span></span>
+          </summary>
+          <div class="guide-detail">
+            <ol class="guide-steps">
+              <li><strong>Такси по счётчику.</strong> На уровне 1 ищите Taxi-Meter у Gate 8 в T1 или рядом с Gate 15 в T2. К цене по счётчику добавляется аэропортовый сбор ฿50. Платные дороги оплачиваются отдельно.</li>
+              <li><strong>Grab.</strong> Стойка находится на уровне 1 у Gate 14 в T2. Приложение покажет цену и точку подачи.</li>
+            </ol>
+            <p>Покажите водителю «BTS Udom Suk» <span lang="th">สถานีบีทีเอสอุดมสุข</span> или адрес отеля, если едете сразу туда.</p>
+            <div class="guide-actions">
+              <a class="guide-action" href="https://www.google.com/maps/dir/?api=1&amp;origin=Don+Mueang+International+Airport&amp;destination=BTS+Udom+Suk+Station,+Bangkok&amp;travelmode=driving" target="_blank" rel="noopener">Дорога в Google Maps</a>
+              <a href="https://donmueang.airportthai.co.th/service/transportation/detail/211" target="_blank" rel="noopener">Стоянки и тарифы такси</a>
+              <a href="https://donmueang.airportthai.co.th/service/transportation/detail/835" target="_blank" rel="noopener">Стойка Grab</a>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <footer class="guide-footer">
+        <p>Время в пути ориентировочное и зависит от ожидания и трафика. Цены на общественный транспорт указаны на одного взрослого, расписания по времени Бангкока. Сверено <time datetime="2026-11-25">25 ноября 2026</time>.</p>
+        <a href="https://www.bts.co.th/eng/routemap.html" target="_blank" rel="noopener">Время и тарифы BTS</a>
+      </footer>
+    </div>
+  </dialog>
   <dialog id="place-editor" class="about place-editor" aria-labelledby="edit-title">
     <button id="edit-close" class="button-icon dialog-close" type="button" aria-label="Закрыть"><svg class="icon"><use href="#i-clear"/></svg></button>
     <h2 id="edit-title">Мои отметки</h2>

@@ -28,6 +28,7 @@
   const error = byId("form-error");
   const notification = byId("notification");
   const about = byId("about");
+  const guide = byId("airport-guide");
   const viaSettings = byId("via-settings");
   const viaTags = byId("via-tags");
   const viaLimit = byId("via-limit");
@@ -829,7 +830,7 @@
     for (const field of fields) if (!field.field.contains(event.target)) hideOptions(field);
   });
   document.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || about.open || editor.open) return;
+    if (event.key !== "Escape" || about.open || editor.open || guide.open) return;
     if (!layers.hidden) {
       toggleLayers(false);
       layersToggle.focus();
@@ -905,6 +906,69 @@
         ? "Разрешите доступ к геопозиции в настройках сайта Safari и попробуйте снова."
         : "Не удалось определить местоположение. Попробуйте ещё раз.");
     }, { enableHighAccuracy: true, timeout: 12000 });
+  });
+
+  const airportSelector = byId("guide-tabs");
+  const airportTabs = [...airportSelector.querySelectorAll('[role="tab"]')];
+  const guideBody = byId("guide-body");
+  const guideDestination = stationByCode.get("E12");
+
+  function selectAirport(tab) {
+    if (tab.getAttribute("aria-selected") === "true") return;
+    for (const airport of airportTabs) {
+      const active = airport === tab;
+      airport.setAttribute("aria-selected", String(active));
+      airport.tabIndex = active ? 0 : -1;
+      byId(airport.getAttribute("aria-controls")).hidden = !active;
+    }
+    guideBody.scrollTop = 0;
+  }
+
+  byId("guide-open").addEventListener("click", event => {
+    event.currentTarget.focus({ preventScroll: true });
+    guide.showModal();
+  });
+  byId("guide-close").addEventListener("click", () => guide.close());
+  airportSelector.addEventListener("click", event => {
+    const tab = event.target.closest('[role="tab"]');
+    if (tab) selectAirport(tab);
+  });
+  airportSelector.addEventListener("keydown", event => {
+    const current = airportTabs.indexOf(event.target);
+    const last = airportTabs.length - 1;
+    const shortcuts = {
+      ArrowLeft: (current + last) % airportTabs.length,
+      ArrowRight: (current + 1) % airportTabs.length,
+      Home: 0,
+      End: last
+    };
+    if (!Object.hasOwn(shortcuts, event.key)) return;
+    event.preventDefault();
+    const tab = airportTabs[shortcuts[event.key]];
+    selectAirport(tab);
+    tab.focus();
+  });
+
+  byId("guide-station").addEventListener("click", () => {
+    guide.close();
+    if (!railVisible) railToggle.click();
+    for (const line of guideDestination.lines) visibleLines.add(line.id);
+    updateLayers();
+    setMobileMapView(true);
+    map.focus(guideDestination, 15.4);
+    showPoint(guideDestination);
+    map.canvas.focus({ preventScroll: true });
+  });
+  guide.addEventListener("click", event => {
+    const button = event.target.closest("[data-guide-from]");
+    if (!button) return;
+    guide.close();
+    setMobileMapView(false);
+    if (catalogOpen) switchPanel(false);
+    criterion = button.dataset.guideCriterion ?? "fastest";
+    setEndpoint("from", button.dataset.guideFrom);
+    setEndpoint("to", guideDestination.code);
+    if (buildRoute()) itinerary.focus({ preventScroll: compact.matches });
   });
 
   byId("about-open").addEventListener("click", () => {

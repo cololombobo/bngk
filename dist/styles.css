@@ -49,6 +49,22 @@ button, a, input, canvas { outline-offset: 4px; }
 .location-button .icon { width: 18px; height: 18px; }
 .about-button { width: 42px; color: #596d5d; }
 .view-toggle { display: none; }
+.guide-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #c6dacf;
+  border-radius: 11px;
+  background: #e4efe8;
+  color: var(--pine-dark);
+  font-size: .875rem;
+  font-weight: 750;
+}
+.guide-button .icon { width: 17px; height: 17px; }
+.guide-button:hover { background: #d9e9df; }
 
 .workspace {
   margin: 0 max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
@@ -229,6 +245,155 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
 .source-links li + li { margin-top: 5px; }
 .dialog-close { position: absolute; top: 9px; right: 9px; color: var(--pine); }
 
+.airport-guide {
+  width: min(720px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid #d7e3da;
+  border-radius: 20px;
+  color: var(--ink);
+  box-shadow: 0 22px 64px #16282036;
+}
+.airport-guide[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.airport-guide::backdrop { background: #152c2566; }
+html:has(.airport-guide[open]) { overflow: hidden; }
+
+.guide-header {
+  --guide-inset: 24px;
+  position: relative;
+  padding: 20px var(--guide-inset) 14px;
+  background: #f1f6f1;
+  border-bottom: 1px solid #dfe8de;
+}
+.guide-header h2 {
+  margin: 0 42px 4px 0;
+  color: var(--pine-dark);
+  font-size: clamp(1.5rem, 3.2vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -.04em;
+}
+.guide-header h2 span { white-space: nowrap; }
+.guide-header .dialog-close { top: 12px; right: var(--guide-inset); width: 44px; height: 44px; }
+.guide-destination { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--pine); }
+.guide-station-code {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #dbeadf;
+  color: var(--pine-dark);
+  font-size: .875rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.guide-station {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pine);
+  font-size: .875rem;
+  font-weight: 720;
+}
+.guide-station:hover { background: #e3eee5; }
+.guide-station .icon { width: 17px; height: 17px; }
+.guide-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.guide-tabs button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  align-content: center;
+  gap: 3px 7px;
+  min-height: 50px;
+  padding: 6px 7px;
+  border: 1px solid #cfddd1;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--pine-dark);
+  font-size: .875rem;
+}
+.guide-tabs button:hover { border-color: #86a295; }
+.guide-tabs button[aria-selected="true"] { background: var(--pine); border-color: var(--pine); color: white; }
+.guide-tabs strong { font-weight: 780; }
+
+.guide-body {
+  padding: 16px 24px 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #bccfc0 transparent;
+}
+.guide-routes { display: grid; gap: 9px; border-radius: 11px; }
+.guide-route { background: #fff; border: 1px solid #dce6dd; border-radius: 12px; }
+.guide-route[open] { border-color: #b5cdbb; }
+.guide-route summary {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  cursor: pointer;
+  list-style: none;
+}
+.guide-route summary::-webkit-details-marker { display: none; }
+.guide-route summary:hover { background: #f6f9f6; }
+.guide-route summary:focus-visible { outline-offset: -2px; }
+.guide-route[open] summary { border-radius: 11px 11px 0 0; background: #f2f7f2; }
+.guide-mode { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; }
+.guide-mode-rail { background: #e3edfa; color: #2a537f; }
+.guide-mode-bus { background: #f9eed2; color: #79560b; }
+.guide-mode-car { background: #e9e8f6; color: #574282; }
+.guide-route-title { display: grid; gap: 3px; color: var(--pine-dark); line-height: 1.25; }
+.guide-route-title strong { font-size: 1rem; font-weight: 760; }
+.guide-route-title > span { color: var(--muted); font-size: .875rem; }
+.guide-chevron { width: 15px; height: 15px; color: var(--pine); }
+.guide-route[open] .guide-chevron { transform: rotate(90deg); }
+.guide-facts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 5px; }
+.guide-facts span {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: #edf3ee;
+  color: #3c5649;
+  font-size: .8125rem;
+  font-weight: 660;
+  line-height: 1.2;
+}
+.guide-detail { padding: 13px 14px 12px; border-top: 1px solid #e1eae1; font-size: 1rem; line-height: 1.5; }
+.guide-steps { padding-inline-start: 22px; margin: 0; }
+.guide-steps li { padding-inline-start: 3px; }
+.guide-steps li + li { margin-top: 8px; }
+.guide-steps li::marker { color: var(--pine); font-weight: 750; }
+.guide-detail p { margin: 12px 0; }
+.guide-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 13px; }
+.guide-actions a, .guide-footer a { color: var(--pine); text-underline-offset: 3px; font-size: .875rem; font-weight: 650; }
+.guide-actions a, .guide-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.guide-actions .guide-action {
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid #cdddcf;
+  background: #ebf3ec;
+  color: var(--pine-dark);
+  font-size: .875rem;
+  font-weight: 740;
+  text-decoration: none;
+}
+.guide-action:hover { background: #dfede2; }
+.guide-footer { margin-top: 15px; color: var(--muted); font-size: .875rem; line-height: 1.45; }
+.guide-footer p { margin: 0; }
+.guide-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+
 .planner-nav { display: flex; align-items: center; gap: 3px; margin: 17px 24px 0; padding: 4px; background: #f1f4ee; border-radius: 12px; }
 .planner-nav button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 37px; flex: 1; border: 1px solid transparent; background: transparent; border-radius: 8px; color: #596c5e; font-size: 13px; font-weight: 710; }
 .planner-nav button[aria-pressed="true"] { background: #fff; color: var(--pine-dark); border-color: #dfe7db; box-shadow: 0 1px 3px #3049370b; }
@@ -383,12 +548,43 @@ h1 { margin: 0; font-size: clamp(28px, 2.25vw, 34px); font-weight: 780; line-hei
   .trip-stop button { min-height: 36px; }
   .station-actions button { min-height: 39px; }
 }
-@media (max-width: 510px) {
+@media (max-width: 650px) {
   .location-button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .location-button { justify-content: center; }
+  .guide-button { padding-inline: 9px; }
+  .view-toggle { min-width: 68px; padding-inline: 7px; }
 }
-@media (max-width: 358px) {
+@media (max-width: 510px) {
+  .airport-guide {
+    width: 100%;
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    margin: auto 0 0;
+    border-radius: 17px 17px 0 0;
+    border-bottom: 0;
+  }
+  .guide-header {
+    --guide-inset: max(14px, env(safe-area-inset-right), env(safe-area-inset-left));
+    padding-top: 15px;
+    padding-bottom: 11px;
+  }
+  .guide-body {
+    padding: 11px max(13px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left));
+  }
+  .guide-route summary { padding: 10px; }
+  .guide-facts { grid-column: 1 / -1; }
+}
+@media (max-width: 470px) {
+  .brand-icon { display: none; }
+}
+@media (max-width: 400px) {
+  .brand-icon { display: grid; }
   .brand > span:last-child { display: none; }
+}
+@media (max-height: 390px) {
+  .guide-header { padding-block: 10px; }
+  .guide-header h2 { font-size: 1.25rem; }
+  .guide-tabs { margin-top: 2px; }
+  .guide-tabs button { min-height: 44px; }
 }
 @media (min-width: 781px) and (max-height: 680px) {
   .planner-inner { padding-top: 21px; padding-bottom: 18px; }
